@@ -1,111 +1,117 @@
 import useAuthLogic from "../auth/UseAuthLogic"
 
 export default function Auth() {
-const {
-  mode,
-  useOtp,
-  name,
-  email,
-  password,
-  phone,        // ✅ added
-  otp,
-  otpSent,
-  loading,
-  message,
-  isError,
+  const {
+    mode,
+    useOtp,
+    name,
+    phone,
+    email,
+    password,
+    otp,
+    otpSent,
+    loading,
+    message,
+    isError,
 
-  setMode,
-  setUseOtp,
-  setName,
-  setEmail,
-  setPassword,
-  setPhone,     // ✅ added
-  setOtp,
+    setMode,
+    setUseOtp,
+    setName,
+    setPhone,
+    setEmail,
+    setPassword,
+    setOtp,
 
-  signup,
-  loginWithPassword,
-  sendEmailOtp,
-  verifyEmailOtp,
-  forgotPassword
-} = useAuthLogic()
-
+    signup,
+    loginWithPassword,
+    sendEmailOtp,
+    verifyEmailOtp,
+    forgotPassword
+  } = useAuthLogic()
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,77,0,0.12),transparent_60%)]" />
+      {/* BACKGROUND ENERGY */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,77,0,0.18),transparent_60%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(255,122,0,0.08),transparent_60%)]" />
 
       <div className="relative z-10 min-h-screen flex items-center justify-center px-4">
-        <div className="w-full max-w-md backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-8 shadow-2xl">
 
-          <h1 className="text-center font-orbitron text-4xl tracking-widest mb-2">
+        {/* CARD */}
+        <div
+          className="w-full max-w-md rounded-3xl p-8
+          bg-black/70 backdrop-blur-xl
+          border border-white/10
+          shadow-[0_0_60px_rgba(255,77,0,0.15)]
+          animate-floatSlow"
+        >
+
+          {/* LOGO */}
+          <h1 className="text-center font-orbitron text-4xl tracking-[0.35em] mb-2">
             <span className="text-white">TOXIC</span>
-            <span className="text-toxic">RUSH</span>
+            <span className="text-[#ff4d00]">RUSH</span>
           </h1>
 
-          <p className="text-center text-gray-400 tracking-widest mb-8">
+          <p className="text-center text-gray-400 tracking-[0.3em] mb-8 text-xs">
             {mode === "login" ? "ENTER THE ARENA" : "CREATE YOUR ID"}
           </p>
 
           {/* MODE SWITCH */}
-          <div className="grid grid-cols-2 mb-6 bg-black/40 rounded-full p-1">
-            <button
-              onClick={() => setMode("login")}
-              className={`py-2 rounded-full ${
-                mode === "login" ? "bg-toxic text-black" : "text-gray-400"
-              }`}
-            >
-              LOGIN
-            </button>
-            <button
-              onClick={() => setMode("signup")}
-              className={`py-2 rounded-full ${
-                mode === "signup" ? "bg-toxic text-black" : "text-gray-400"
-              }`}
-            >
-              SIGN UP
-            </button>
+          <div className="grid grid-cols-2 mb-6 bg-black/50 rounded-full p-1 border border-white/10">
+            {["login", "signup"].map(m => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`py-2 rounded-full text-xs tracking-widest transition-all
+                  ${
+                    mode === m
+                      ? "bg-[#ff4d00] text-black shadow-[0_0_20px_rgba(255,77,0,0.6)]"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+              >
+                {m === "login" ? "LOGIN" : "SIGN UP"}
+              </button>
+            ))}
           </div>
 
           <div className="space-y-5">
 
-            {/* SIGNUP */}
-          {mode === "signup" && (
-  <>
-    <input
-      className="auth-input"
-      placeholder="FULL NAME"
-      value={name}
-      onChange={e => setName(e.target.value)}
-    />
+            {/* ================= SIGNUP ================= */}
+            {mode === "signup" && (
+              <>
+                <input
+                  className="auth-input"
+                  placeholder="FULL NAME"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                />
 
-    {/* ✅ PHONE NUMBER */}
-    <input
-      className="auth-input"
-      placeholder="MOBILE (+91XXXXXXXXXX)"
-      value={phone}
-      onChange={e => setPhone(e.target.value)}
-    />
+                <input
+                  className="auth-input"
+                  placeholder="MOBILE (+91XXXXXXXXXX)"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                />
 
-    <input
-      className="auth-input"
-      placeholder="EMAIL"
-      value={email}
-      onChange={e => setEmail(e.target.value)}
-    />
+                <input
+                  className="auth-input"
+                  placeholder="EMAIL"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                />
 
-    <input
-      className="auth-input"
-      type="password"
-      placeholder="PASSWORD"
-      value={password}
-      onChange={e => setPassword(e.target.value)}
-    />
-  </>
-)}
+                <input
+                  className="auth-input"
+                  type="password"
+                  placeholder="PASSWORD"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+              </>
+            )}
 
-
-            {/* LOGIN */}
+            {/* ================= LOGIN ================= */}
             {mode === "login" && (
               <>
                 <input
@@ -134,35 +140,49 @@ const {
                   />
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setUseOtp(p => !p)}
-                  className="text-xs text-toxic hover:underline"
-                >
-                  {useOtp ? "Login with Password" : "Login with OTP"}
-                </button>
-
-                {!useOtp && (
+                {/* LOGIN OPTIONS ROW */}
+                <div className="flex items-center justify-between mt-2">
                   <button
-                    onClick={forgotPassword}
-                    className="text-xs text-gray-400 hover:text-toxic"
+                    type="button"
+                    onClick={() => {
+                      setUseOtp(p => !p)
+                      setPassword("")
+                      setOtp("")
+                    }}
+                    className="text-xs tracking-widest text-[#ff4d00] hover:text-white transition"
                   >
-                    Forgot password?
+                    {useOtp ? "LOGIN WITH PASSWORD" : "LOGIN WITH OTP"}
                   </button>
-                )}
+
+                  {!useOtp && (
+                    <button
+                      onClick={forgotPassword}
+                      className="text-xs tracking-widest text-gray-400 hover:text-[#ff4d00] transition"
+                    >
+                      FORGOT PASSWORD?
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </div>
 
-          {/* MESSAGE */}
+          {/* ================= MESSAGE ================= */}
           {message && (
-            <div className={`mt-5 auth-message ${isError ? "auth-error" : "auth-success"}`}>
-              <span>{isError ? "⚠️" : "✅"}</span>
+            <div
+              className={`mt-5 flex gap-3 px-4 py-3 rounded-xl text-sm border
+                ${
+                  isError
+                    ? "bg-red-500/10 border-red-500/30 text-red-400"
+                    : "bg-green-500/10 border-green-500/30 text-green-400"
+                }`}
+            >
+              <span className="text-lg">{isError ? "✖" : "✔"}</span>
               <span>{message}</span>
             </div>
           )}
 
-          {/* ACTION BUTTON */}
+          {/* ================= CTA ================= */}
           <button
             onClick={
               mode === "login"
@@ -174,15 +194,18 @@ const {
                 : signup
             }
             disabled={loading}
-            className="mt-8 w-full py-3 rounded-xl bg-toxic text-black font-orbitron tracking-widest"
+            className="mt-8 w-full py-3 rounded-xl font-orbitron tracking-[0.3em]
+              text-black btn-toxic transition-all"
           >
             {loading
               ? "PROCESSING..."
               : mode === "login"
-                ? useOtp
-                  ? otpSent ? "VERIFY OTP" : "GET OTP"
-                  : "ENTER"
-                : "CREATE ACCOUNT"}
+              ? useOtp
+                ? otpSent
+                  ? "VERIFY OTP"
+                  : "GET OTP"
+                : "ENTER"
+              : "CREATE ACCOUNT"}
           </button>
 
         </div>

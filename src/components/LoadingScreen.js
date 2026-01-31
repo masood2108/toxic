@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react"
 
 export default function LoadingScreen({ onFinish }) {
-
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
@@ -9,64 +8,89 @@ export default function LoadingScreen({ onFinish }) {
       setProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval)
-          setTimeout(onFinish, 700)
+          setTimeout(onFinish, 600)
           return 100
         }
-        return prev + Math.floor(Math.random() * 6 + 2)
+        return prev + Math.floor(Math.random() * 6 + 3)
       })
-    }, 140)
+    }, 120)
 
     return () => clearInterval(interval)
-  }, [onFinish])   // ✅ ONLY ADDITION (FIXES WARNING)
+  }, [onFinish])
 
-  const statusText =
-    progress < 40 ? "INITIALIZING CORE" :
-    progress < 70 ? "LOADING ASSETS" :
-    progress < 100 ? "FINALIZING" :
-    "READY"
+  const status =
+    progress < 30
+      ? "POWERING CORE"
+      : progress < 60
+      ? "CHARGING SYSTEMS"
+      : progress < 90
+      ? "OVERLOADING"
+      : "REACTOR READY"
 
   return (
-    <div className="relative h-screen w-full bg-black overflow-hidden flex items-center justify-center">
+    <div className="h-screen w-full bg-black flex items-center justify-center overflow-hidden">
 
-      {/* BACKGROUND GLOW */}
-      <div className="absolute inset-0 bg-radial-glow"></div>
+      {/* BACKDROP GLOW */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,77,0,0.25),transparent_55%)]" />
 
-      {/* SCANLINES */}
-      <div className="absolute inset-0 bg-scanlines opacity-10 pointer-events-none"></div>
+      {/* CORE */}
+      <div className="relative flex flex-col items-center">
 
-      {/* CONTENT */}
-      <div className="relative flex flex-col items-center px-4 text-center">
+        {/* ROTATING SEGMENTS */}
+        <div className="relative w-52 h-52 sm:w-64 sm:h-64">
+          <div className="absolute inset-0 rounded-full border border-red-500/30 animate-spinSlow" />
+          <div className="absolute inset-4 rounded-full border border-orange-500/40 animate-spinReverse" />
+          <div className="absolute inset-8 rounded-full border border-yellow-400/30" />
 
-        {/* ENERGY RINGS */}
-        <div className="relative w-44 h-44 sm:w-56 sm:h-56 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-2 border-toxic animate-spin-slow blur-sm"></div>
-          <div className="absolute inset-6 rounded-full border border-toxicSoft"></div>
+          {/* ENERGY FILL */}
+          <div
+            className="absolute inset-10 rounded-full transition-all duration-300"
+            style={{
+              background: `radial-gradient(circle, rgba(255,77,0,${
+                progress / 120
+              }), transparent 70%)`,
+              boxShadow: `0 0 ${progress / 2}px rgba(255,77,0,0.8)`
+            }}
+          />
 
           {/* LOGO */}
-          <h1 className="font-orbitron tracking-widest text-3xl sm:text-4xl glitch">
-            <span className="text-white">TOXIC</span>
-            <span className="text-toxic">RUSH</span>
-          </h1>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <h1 className="font-orbitron text-3xl sm:text-4xl tracking-[0.35em]">
+              <span className="text-white">TOXIC</span>
+              <span className="text-red-500">RUSH</span>
+            </h1>
+          </div>
         </div>
 
         {/* STATUS */}
-        <p className="mt-6 font-rajdhani text-gray-400 tracking-widest text-xs sm:text-sm">
-          {statusText}
+        <p className="mt-6 text-xs sm:text-sm tracking-[0.4em] text-gray-400">
+          {status}
         </p>
 
         {/* PROGRESS */}
-        <div className="mt-3 font-orbitron text-toxic text-lg sm:text-xl">
+        <div className="mt-2 font-orbitron text-2xl text-red-500 tracking-widest">
           {progress}%
         </div>
 
-        {/* BAR */}
-        <div className="mt-4 w-56 sm:w-64 h-1 bg-gray-800 rounded overflow-hidden">
+        {/* CHARGE BAR */}
+        <div className="mt-5 w-64 h-1 bg-gray-800 overflow-hidden">
           <div
-            className="h-full bg-toxic transition-all duration-300"
-            style={{ width: `${progress}%` }}
+            className="h-full transition-all duration-300"
+            style={{
+              width: `${progress}%`,
+              background:
+                "linear-gradient(90deg, #ff2a00, #ff6a00, #ffb000)",
+              boxShadow: "0 0 20px rgba(255,77,0,0.8)"
+            }}
           />
         </div>
 
+        {/* FINAL WARNING */}
+        {progress > 90 && (
+          <p className="mt-4 text-xs tracking-[0.3em] text-red-500 animate-pulse">
+            OVERCHARGE DETECTED
+          </p>
+        )}
       </div>
     </div>
   )

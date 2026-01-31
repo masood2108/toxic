@@ -1,32 +1,30 @@
 import { useState, useEffect } from "react"
-import { auth, db } from "../firebase"
+import { auth } from "../firebase"
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signOut,
-  signInAnonymously,
-  sendPasswordResetEmail
+  signInWithCustomToken,
+  sendPasswordResetEmail,
+  updatePassword
 } from "firebase/auth"
-import { doc, setDoc } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
-import { sendSignInLinkToEmail } from "firebase/auth"
-
-const ADMIN_EMAILS = [
-  "masoodhussainr8@gmail.com",
-  "officialtoxicrush.esports@gmail.com"
-]
 
 export default function useAuthLogic() {
-  /* ================= STATE ================= */
+  /* ================= MODE ================= */
   const [mode, setMode] = useState("login")
   const [useOtp, setUseOtp] = useState(false)
 
+  /* ================= SIGNUP DATA ================= */
   const [name, setName] = useState("")
+  const [phone, setPhone] = useState("")
+
+  /* ================= AUTH DATA ================= */
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [otp, setOtp] = useState("")
   const [otpSent, setOtpSent] = useState(false)
 
+  /* ================= UI ================= */
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
   const [isError, setIsError] = useState(false)
@@ -34,148 +32,180 @@ export default function useAuthLogic() {
   const navigate = useNavigate()
 
   /* ================= HELPERS ================= */
-  const errorText = (e) => {
-    const c = e?.code
-    if (c === "auth/email-already-in-use") return "EMAIL ALREADY REGISTERED"
-    if (c === "auth/invalid-email") return "INVALID EMAIL"
-    if (c === "auth/weak-password") return "WEAK PASSWORD"
-    if (c === "auth/user-not-found") return "ACCOUNT NOT FOUND"
-    if (c === "auth/wrong-password") return "WRONG PASSWORD"
-    return "AUTH FAILED"
+  const success = (msg) => {
+    setIsError(false)
+    setMessage(msg)
   }
 
-  const saveUser = async (uid, data) => {
-    await setDoc(doc(db, "users", uid), data, { merge: true })
+  const error = (msg) => {
+    setIsError(true)
+    setMessage(msg)
   }
 
   /* ================= SIGNUP ================= */
   const signup = async () => {
     if (!name || !email || !password) {
-      setIsError(true)
-      setMessage("PLEASE FILL ALL FIELDS")
+      error("Please fill in all fields to continue.")
       return
     }
 
     setLoading(true)
-    setIsError(false)
-
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password)
-
-      await saveUser(cred.user.uid, {
-        name,
-        email,
-        role: ADMIN_EMAILS.includes(email) ? "admin" : "user",
-        createdAt: Date.now()
-      })
-
-      await signOut(auth)
+      await createUserWithEmailAndPassword(auth, email, password)
+      success("Account created successfully. Please log in to continue.")
       setMode("login")
-      setMessage("ACCOUNT CREATED — LOGIN TO CONTINUE")
     } catch (e) {
-      setIsError(true)
-      setMessage(errorText(e))
+      if (e.code === "auth/email-already-in-use") {
+        error("This email is already registered. Try logging in.")
+      } else if (e.code === "auth/weak-password") {
+        error("Password must be at least 6 characters long.")
+      } else if (e.code === "auth/invalid-email") {
+        error("Please enter a valid email address.")
+      } else {
+        error("Signup failed. Please try again.")
+      }
     }
-
     setLoading(false)
   }
 
   /* ================= PASSWORD LOGIN ================= */
   const loginWithPassword = async () => {
     if (!email || !password) {
-      setIsError(true)
-      setMessage("ENTER EMAIL AND PASSWORD")
+      error("Please enter both email and password.")
       return
     }
 
     setLoading(true)
-    setIsError(false)
-
     try {
       await signInWithEmailAndPassword(auth, email, password)
+      success("Welcome back! Logging you in…")
       navigate("/games")
     } catch (e) {
-      setIsError(true)
-      setMessage(errorText(e))
+      if (e.code === "auth/user-not-found") {
+        error("No account found with this email.")
+      } else if (e.code === "auth/wrong-password") {
+        error("Incorrect password. Please try again.")
+      } else {
+        error("Login failed. Please try again.")
+      }
     }
-
     setLoading(false)
   }
 
-  /* ================= EMAIL OTP SEND ================= */
+  /* ================= SEND OTP ================= */
   const sendEmailOtp = async () => {
-  if (!email) {
-    setIsError(true)
-    setMessage("ENTER EMAIL")
-    return
-  }
-
-  setLoading(true)
-  setIsError(false)
-
-  try {
-    const actionCodeSettings = {
-      url: "https://toxic-3afx.vercel.app/finish-login",
-      handleCodeInApp: true
+    if (!email) {
+      error("Please enter your email address first.")
+      return
     }
 
-    await sendSignInLinkToEmail(auth, email, actionCodeSettings)
+    setLoading(true)
+    try {
+      const res = await fetch("src/api/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      })
 
-    localStorage.setItem("emailForSignIn", email)
-    setMessage("OTP LINK SENT TO EMAIL")
-  } catch (err) {
-    setIsError(true)
-    setMessage("FAILED TO SEND OTP")
+      const data = await res.json()
+      if (!data.success) throw new Error(data.message)
+
+      setOtpSent(true)
+      success("OTP sent to your email. Check inbox & spam 📩")
+    } catch (e) {
+      error(
+        e.message ||
+          "Failed to send OTP. Please wait and try again."
+      )
+    }
+    setLoading(false)
   }
 
-  setLoading(false)
-}
-
-
-  /* ================= EMAIL OTP VERIFY ================= */
+  /* ================= VERIFY OTP ================= */
   const verifyEmailOtp = async () => {
-    if (!otp) return
+    if (!otp) {
+      error("Please enter the OTP sent to your email.")
+      return
+    }
 
     setLoading(true)
-    setIsError(false)
-
     try {
-      const res = await fetch("http://localhost:5000/verify-otp", {
+      const res = await fetch("src/api/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp })
       })
 
       const data = await res.json()
-      if (!data.success) throw new Error()
+      if (!data.success) throw new Error(data.message)
 
-      await signInAnonymously(auth)
-      navigate("/games")
-    } catch {
-      setIsError(true)
-      setMessage("INVALID OTP")
+      await signInWithCustomToken(auth, data.token)
+
+      if (data.needsPassword) {
+        success("OTP verified. Please set your password.")
+        navigate("/set-password")
+      } else {
+        success("Login successful. Welcome back!")
+        navigate("/games")
+      }
+    } catch (e) {
+      error(
+        e.message ||
+          "Invalid or expired OTP. Please try again."
+      )
+    }
+    setLoading(false)
+  }
+
+  /* ================= SET PASSWORD ================= */
+  const setNewPassword = async (newPassword) => {
+    if (!newPassword || newPassword.length < 6) {
+      error("Password must be at least 6 characters long.")
+      return
     }
 
+    setLoading(true)
+    try {
+      await updatePassword(auth.currentUser, newPassword)
+      success("Password set successfully. Redirecting…")
+      navigate("/games")
+    } catch (e) {
+      error("Failed to set password. Please try again.")
+    }
     setLoading(false)
   }
 
   /* ================= FORGOT PASSWORD ================= */
   const forgotPassword = async () => {
-    if (!email) return
-    await sendPasswordResetEmail(auth, email)
-    setMessage("RESET LINK SENT TO EMAIL")
+    if (!email) {
+      error("Please enter your email to reset password.")
+      return
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email)
+      success("Password reset link sent to your email 📧")
+    } catch {
+      error("Failed to send reset link. Please try again.")
+    }
   }
 
+  /* ================= RESET ON MODE / METHOD CHANGE ================= */
   useEffect(() => {
+    setPassword("")
     setOtp("")
     setOtpSent(false)
+    setMessage("")
+    setIsError(false)
   }, [useOtp, mode])
 
   /* ================= EXPORT ================= */
   return {
+    /* state */
     mode,
     useOtp,
     name,
+    phone,
     email,
     password,
     otp,
@@ -184,17 +214,21 @@ export default function useAuthLogic() {
     message,
     isError,
 
+    /* setters */
     setMode,
     setUseOtp,
     setName,
+    setPhone,
     setEmail,
     setPassword,
     setOtp,
 
+    /* actions */
     signup,
     loginWithPassword,
     sendEmailOtp,
     verifyEmailOtp,
+    setNewPassword,
     forgotPassword
   }
 }

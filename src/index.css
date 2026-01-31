@@ -257,3 +257,47 @@ body {
 .auth-link:hover {
   text-decoration: underline;
 }
+@keyframes spinSlow {
+  from { transform: rotate(0deg) }
+  to { transform: rotate(360deg) }
+}
+.animate-spinSlow {
+  animation: spinSlow 10s linear infinite;
+}
+
+@keyframes spinReverse {
+  from { transform: rotate(360deg) }
+  to { transform: rotate(0deg) }
+}
+.animate-spinReverse {
+  animation: spinReverse 14s linear infinite;
+}
+/* ===== AUTH INPUT ===== */
+.auth-input {
+  @apply w-full px-4 py-3 rounded-xl bg-black/60 border border-white/10
+    text-white placeholder-gray-500 tracking-widest
+    focus:outline-none focus:ring-2 focus:ring-[#ff4d00]/40
+    focus:border-[#ff4d00] transition-all duration-200;
+}
+
+/* ===== BUTTON GLOW ===== */
+.btn-toxic {
+  background: linear-gradient(135deg, #ff4d00, #ff7a00);
+  box-shadow: 0 0 25px rgba(255, 77, 0, 0.35);
+}
+.btn-toxic:hover {
+  box-shadow: 0 0 45px rgba(255, 77, 0, 0.6);
+  transform: translateY(-1px);
+}
+.btn-toxic:active {
+  transform: translateY(0);
+}
+
+/* ===== FLOAT ANIMATION ===== */
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0) }
+  50% { transform: translateY(-6px) }
+}
+.animate-floatSlow {
+  animation: floatSlow 6s ease-in-out infinite;
+}
