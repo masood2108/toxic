@@ -108,54 +108,7 @@ body {
   0%, 90%, 100% { opacity: 0; }
   92%, 96% { opacity: 1; }
 }
-.auth-input {
-  width: 100%;
-  padding: 14px 16px;
-  background: rgba(0,0,0,0.6);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 14px;
-  color: white;
-  font-family: Rajdhani, sans-serif;
-  letter-spacing: 0.15em;
-  outline: none;
-  transition: all 0.25s ease;
-}
 
-.auth-input::placeholder {
-  color: rgba(255,255,255,0.4);
-}
-
-.auth-input:focus {
-  border-color: #ff4d00;
-  box-shadow: 0 0 25px rgba(255,77,0,0.45);
-}
-/* AUTH MESSAGE BOX */
-.auth-message {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  font-family: Rajdhani, sans-serif;
-  letter-spacing: 0.08em;
-  animation: slideFade 0.3s ease;
-}
-
-/* ERROR */
-.auth-error {
-  background: rgba(255, 80, 80, 0.08);
-  border: 1px solid rgba(255, 80, 80, 0.35);
-  color: #ff6b6b;
-  box-shadow: 0 0 18px rgba(255, 80, 80, 0.25);
-}
-
-/* SUCCESS */
-.auth-success {
-  background: rgba(80, 255, 160, 0.08);
-  border: 1px solid rgba(80, 255, 160, 0.35);
-  color: #4ade80;
-  box-shadow: 0 0 18px rgba(80, 255, 160, 0.25);
-}
 
 @keyframes slideFade {
   from {
@@ -244,4 +197,63 @@ body {
   color: black;
   padding: 0.4rem 0.75rem;
   border-radius: 0.5rem;
+}
+.auth-card {
+  background: linear-gradient(180deg, #0c0c0c, #111);
+  border: 1px solid rgba(255, 77, 0, 0.35);
+  box-shadow:
+    0 0 40px rgba(255, 77, 0, 0.15),
+    inset 0 0 20px rgba(255, 255, 255, 0.02);
+}
+.auth-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #0f0f0f;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.auth-input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: #ff4d00;
+  box-shadow: 0 0 0 2px rgba(255, 77, 0, 0.25);
+}
+.auth-toggle {
+  background: #0a0a0a;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.auth-toggle-active {
+  background: linear-gradient(135deg, #ff4d00, #ff6a00);
+  color: black;
+  box-shadow: 0 0 20px rgba(255,77,0,0.5);
+}
+.auth-btn {
+  background: linear-gradient(135deg, #ff4d00, #ff6a00);
+  color: black;
+  font-weight: 700;
+  letter-spacing: 2px;
+  box-shadow: 0 10px 30px rgba(255,77,0,0.45);
+}
+
+.auth-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 15px 40px rgba(255,77,0,0.6);
+}
+.auth-link {
+  color: #ff4d00;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
 }
