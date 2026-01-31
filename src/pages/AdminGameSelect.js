@@ -14,7 +14,7 @@ export default function AdminGameSelect() {
     if (!auth.currentUser || !ADMIN_EMAILS.includes(auth.currentUser.email)) {
       navigate("/")
     }
-  }, [])
+  }, [navigate])
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
