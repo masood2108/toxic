@@ -115,7 +115,7 @@ export default function useAuthLogic() {
 
   try {
     const actionCodeSettings = {
-      url: "http://localhost:3000/finish-login",
+      url: "https://toxic-3afx.vercel.app/finish-login",
       handleCodeInApp: true
     }
 
