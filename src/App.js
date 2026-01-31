@@ -5,6 +5,7 @@ import Lobby from "./pages/Lobby"
 import AdminGameSelect  from "./pages/AdminGameSelect"
 import AdminGameDashboard  from "./pages/AdminGameDashboard"
 import Profile from "./pages/Profile"
+import FinishLogin from "./pages/FinishLogin"
 
 
 import LoadingScreen from "./components/LoadingScreen"
@@ -49,6 +50,7 @@ export default function App() {
 <Route path="/admin/game/:gameId" element={<AdminGameDashboard />} />
 <Route path="/profile" element={<Profile />} />
 
+<Route path="/finish-login" element={<FinishLogin />} />
 
       </Routes>
     </BrowserRouter>
