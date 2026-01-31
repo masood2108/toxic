@@ -1,11 +1,6 @@
 import admin from "firebase-admin"
 
-/* ================= INIT FIREBASE ADMIN ================= */
 if (!admin.apps.length) {
-  if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT env variable missing")
-  }
-
   admin.initializeApp({
     credential: admin.credential.cert(
       JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
@@ -13,42 +8,36 @@ if (!admin.apps.length) {
   })
 }
 
-/* ================= OTP STORE ================= */
-const otpStore = global.otpStore || new Map()
-global.otpStore = otpStore
+const db = admin.firestore()
 
-/* ================= HANDLER ================= */
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res
-      .status(405)
-      .json({ success: false, message: "Method Not Allowed" })
+    return res.status(405).json({ success: false })
   }
 
   const { email, otp } = req.body
 
-  if (!email || !otp) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Email and OTP required" })
+  const ref = db.collection("otp_requests").doc(email)
+  const snap = await ref.get()
+
+  if (!snap.exists) {
+    return res.status(401).json({
+      success: false,
+      message: "OTP expired or not found"
+    })
   }
 
-  const record = otpStore.get(email)
+  const data = snap.data()
 
-  if (!record || record.otp !== otp) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid OTP" })
+  if (data.otp !== otp || Date.now() > data.expiresAt) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired OTP"
+    })
   }
 
-  if (Date.now() > record.expires) {
-    otpStore.delete(email)
-    return res
-      .status(401)
-      .json({ success: false, message: "OTP expired" })
-  }
-
-  otpStore.delete(email)
+  // ✅ DELETE OTP AFTER USE
+  await ref.delete()
 
   let user
   let needsPassword = false

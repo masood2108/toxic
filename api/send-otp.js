@@ -1,7 +1,15 @@
 import nodemailer from "nodemailer"
+import admin from "firebase-admin"
 
-const otpStore = global.otpStore || new Map()
-global.otpStore = otpStore
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(
+      JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+    )
+  })
+}
+
+const db = admin.firestore()
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -13,18 +21,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, message: "Email required" })
   }
 
-  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-    return res.status(500).json({
-      success: false,
-      message: "Mail service not configured"
-    })
-  }
-
   const otp = Math.floor(100000 + Math.random() * 900000).toString()
+  const expiresAt = Date.now() + 5 * 60 * 1000 // 5 min
 
-  otpStore.set(email, {
+  // ✅ SAVE OTP IN FIRESTORE
+  await db.collection("otp_requests").doc(email).set({
     otp,
-    expires: Date.now() + 5 * 60 * 1000
+    expiresAt
   })
 
   const transporter = nodemailer.createTransport({
@@ -40,7 +43,7 @@ export default async function handler(req, res) {
       from: `"ToxicRush 🔥" <${process.env.MAIL_USER}>`,
       to: email,
       subject: "Your ToxicRush OTP",
-html: `
+      html: `
   <div style="
     width:100%;
     background:#0d0d0d;
@@ -93,13 +96,11 @@ html: `
 
     </div>
   </div>
-`     })
+` 
+    })
 
     return res.json({ success: true, message: "OTP sent" })
-  } catch (e) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to send OTP"
-    })
+  } catch {
+    return res.status(500).json({ success: false, message: "Mail failed" })
   }
 }
