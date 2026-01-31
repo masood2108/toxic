@@ -14,13 +14,18 @@ import {
 import { useNavigate } from "react-router-dom"
 
 export default function Lobby() {
+// ⏱️ COOLDOWN & RETRY CONFIG
+const REJOIN_COOLDOWN_MINUTES = 10
+const MAX_RETRY_LIMIT = 3
+const [attempts, setAttempts] = useState(0)
+
 
   const { gameId } = useParams()
 
   /* 🔥 TOURNAMENT LIST */
   const [uploadProgress, setUploadProgress] = useState(0)
-const [isUploading, setIsUploading] = useState(false)
-const navigate = useNavigate()
+  const [isUploading, setIsUploading] = useState(false)
+  const navigate = useNavigate()
 
   const [tournaments, setTournaments] = useState([])
   const [selectedTournament, setSelectedTournament] = useState(null)
@@ -56,30 +61,66 @@ const navigate = useNavigate()
     return () => unsub()
   }, [gameId])
 
-  /* 🔥 CHECK IF USER ALREADY JOINED */
-  useEffect(() => {
-    if (!auth.currentUser || !selectedTournament) return
+/* 🔥 CHECK IF USER ALREADY JOINED */
+useEffect(() => {
+  if (!auth.currentUser || !selectedTournament) return
 
-    const ref = doc(
-      db,
-      "tournamentPlayers",
-      selectedTournament.id,
-      "players",
-      auth.currentUser.uid
-    )
+  const ref = doc(
+    db,
+    "tournamentPlayers",
+    selectedTournament.id,
+    "players",
+    auth.currentUser.uid
+  )
 
-    return onSnapshot(ref, snap => {
-      if (snap.exists()) {
+  return onSnapshot(ref, snap => {
+    if (!snap.exists()) {
+      setAlreadyJoined(false)
+      setUserStatus(null)
+      return
+    }
+
+    const data = snap.data()
+const status = data.paymentStatus
+const retryCount = data.attempts || 0
+
+setAttempts(retryCount)
+
+    const lastRejectedAt = data.lastRejectedAt || 0
+
+    setUserStatus(status)
+
+    // 🚫 MAX RETRY LIMIT
+if (retryCount >= MAX_RETRY_LIMIT && status === "rejected") {
+      setAlreadyJoined(true)
+      setMessage("❌ Retry limit reached")
+      return
+    }
+
+    // 🕒 COOLDOWN CHECK
+    if (status === "rejected") {
+      const cooldownMs = REJOIN_COOLDOWN_MINUTES * 60 * 1000
+      const canRetry = Date.now() - lastRejectedAt >= cooldownMs
+
+      if (!canRetry) {
         setAlreadyJoined(true)
-        setUserStatus(snap.data().paymentStatus)
-      } else {
-        setAlreadyJoined(false)
-        setUserStatus(null)
+        setMessage(
+          `⏳ Please wait ${REJOIN_COOLDOWN_MINUTES} minutes before rejoining`
+        )
+        return
       }
-    })
-  }, [selectedTournament])
 
-  /* 🧼 ADDED: clean preview URL memory */
+      // ✅ allowed to retry
+      setAlreadyJoined(false)
+      return
+    }
+
+    // approved or pending
+    setAlreadyJoined(true)
+  })
+}, [selectedTournament])
+
+  /* 🧼 CLEAN PREVIEW URL */
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
@@ -88,45 +129,43 @@ const navigate = useNavigate()
 
   /* ☁️ CLOUDINARY UPLOAD */
   const uploadToCloudinary = (file) => {
-  setIsUploading(true)
-  setUploadProgress(0)
+    setIsUploading(true)
+    setUploadProgress(0)
 
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    const formData = new FormData()
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      const formData = new FormData()
 
-    formData.append("file", file)
-    formData.append("upload_preset", "99dxxxx")
+      formData.append("file", file)
+      formData.append("upload_preset", "99dxxxx")
 
-    xhr.open(
-      "POST",
-      "https://api.cloudinary.com/v1_1/dvic2uies/image/upload"
-    )
+      xhr.open(
+        "POST",
+        "https://api.cloudinary.com/v1_1/dvic2uies/image/upload"
+      )
 
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        const percent = Math.round((e.loaded * 100) / e.total)
-        setUploadProgress(percent)
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded * 100) / e.total)
+          setUploadProgress(percent)
+        }
       }
-    }
 
-    xhr.onload = () => {
-      setIsUploading(false)
-      const res = JSON.parse(xhr.responseText)
-      if (res.secure_url) resolve(res.secure_url)
-      else reject("Upload failed")
-    }
+      xhr.onload = () => {
+        setIsUploading(false)
+        const res = JSON.parse(xhr.responseText)
+        if (res.secure_url) resolve(res.secure_url)
+        else reject("Upload failed")
+      }
 
-    xhr.onerror = () => {
-      setIsUploading(false)
-      reject("Upload error")
-    }
+      xhr.onerror = () => {
+        setIsUploading(false)
+        reject("Upload error")
+      }
 
-    xhr.send(formData)
-  })
-}
-
-
+      xhr.send(formData)
+    })
+  }
 
   /* 🔥 CONFIRM JOIN */
   const confirmJoin = async () => {
@@ -155,35 +194,47 @@ const navigate = useNavigate()
       const screenshotUrl = await uploadToCloudinary(paymentScreenshot)
 
       await setDoc(
-        doc(
-          db,
-          "tournamentPlayers",
-          selectedTournament.id,
-          "players",
-          user.uid
-        ),
-        {
-          ign,
-          bgmiUid,
-          email: user.email,
-          paymentScreenshot: screenshotUrl,
-paymentStatus: "approved",
-          joinedAt: Date.now()
-        }
-      )
+  doc(
+    db,
+    "tournamentPlayers",
+    selectedTournament.id,
+    "players",
+    user.uid
+  ),
+  {
+    ign,
+    bgmiUid,
+    email: user.email,
+    paymentScreenshot: screenshotUrl,
+    paymentStatus: "pending",
+    joinedAt: Date.now(),
 
-      const nextCount = selectedTournament.joinedCount + 1
+    // ✅ ADDED
+attempts: userStatus === "rejected" ? attempts + 1 : 1,
+    lastRejectedAt: null
+  },
+  { merge: true }
+)
 
-      await updateDoc(
-        doc(db, "tournaments", selectedTournament.id),
-        {
-          joinedCount: nextCount,
-          status:
-            nextCount >= selectedTournament.maxPlayers
-              ? "closed"
-              : "open"
-        }
-      )
+
+      // ✅ ADD THIS CONDITION
+if (!userStatus || userStatus !== "rejected") {
+
+  const nextCount = selectedTournament.joinedCount + 1
+
+  await updateDoc(
+    doc(db, "tournaments", selectedTournament.id),
+    {
+      joinedCount: nextCount,
+      status:
+        nextCount >= selectedTournament.maxPlayers
+          ? "closed"
+          : "open"
+    }
+  )
+}
+
+
 
       setShowJoinModal(false)
       setIgn("")
@@ -224,18 +275,17 @@ paymentStatus: "approved",
         <h1 className="font-orbitron tracking-widest text-xl">
           TOXIC<span className="text-toxic">RUSH</span>
         </h1>
-        {/* PROFILE ICON */}
-<div
-  onClick={() => navigate("/profile")}
-  className="w-10 h-10 rounded-full border-2 border-toxic
-             flex items-center justify-center cursor-pointer
-             hover:bg-toxic/20 transition"
->
-  <span className="text-toxic text-lg">👤</span>
-</div>
 
+        <div
+          onClick={() => navigate("/profile")}
+          className="w-10 h-10 rounded-full border-2 border-toxic
+                     flex items-center justify-center cursor-pointer
+                     hover:bg-toxic/20 transition"
+        >
+          <span className="text-toxic text-lg">👤</span>
+        </div>
       </div>
-      
+
       {/* TITLE */}
       <div className="mt-8">
         <h2 className="font-orbitron text-3xl tracking-widest">
@@ -278,11 +328,11 @@ paymentStatus: "approved",
                 />
               </div>
 
-              {userStatus === "approved" && selectedTournament?.id === t.id && (
-                <div className="mt-4 bg-green-900/20 border border-green-500 rounded-xl p-4">
-                  <p>Room ID: <b>{t.roomId}</b></p>
-                  <p>Password: <b>{t.roomPassword}</b></p>
-                </div>
+              {/* ✅ ADDED: use userStatus to fix eslint */}
+              {userStatus && selectedTournament?.id === t.id && (
+                <p className="text-xs text-yellow-400 mt-2">
+                  Status: {userStatus.toUpperCase()}
+                </p>
               )}
 
               <div className="flex justify-between items-center mt-6">
@@ -294,7 +344,7 @@ paymentStatus: "approved",
                   onClick={() => {
                     setSelectedTournament(t)
                     setShowJoinModal(true)
-                    setMessage("") 
+                    setMessage("")
                   }}
                   disabled={
                     t.status === "closed" ||
@@ -312,138 +362,114 @@ paymentStatus: "approved",
         })}
       </div>
 
-
-
       {/* 🔥 JOIN MODAL */}
       {showJoinModal && (
-  <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center px-4">
+<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center px-4 overflow-y-auto">
 
-    <div className="w-full max-w-5xl bg-[#0b0b0b] border border-toxic rounded-2xl overflow-hidden">
+<div className="w-full max-w-md bg-[#0b0b0b] border border-toxic rounded-2xl overflow-hidden my-10">
 
-      {/* HEADER */}
-      <div className="px-6 py-4 border-b border-white/10">
-        <h2 className="font-orbitron tracking-widest text-xl">
-          JOIN MATCH
-        </h2>
-      </div>
+            <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center">
+  <h2 className="font-orbitron tracking-widest text-lg">
+    JOIN MATCH
+  </h2>
 
-      {/* BODY */}
-      <div className="p-6 space-y-6">
+  <button
+    onClick={() => setShowJoinModal(false)}
+    className="text-gray-400 hover:text-white text-xl"
+  >
+    ✕
+  </button>
+</div>
 
-        {/* IGN */}
-        <div>
-          <label className="text-sm text-gray-400">In-Game Name</label>
-          <input
-            value={ign}
-            onChange={e => setIgn(e.target.value)}
-            placeholder="Ex: SoulMortal"
-            className="w-full mt-1 px-4 py-3 bg-black border border-white/20 rounded-lg
-            outline-none focus:border-toxic"
-          />
-        </div>
 
-        {/* BGMI UID */}
-        <div>
-          <label className="text-sm text-gray-400">BGMI UID</label>
-          <input
-            value={bgmiUid}
-            onChange={e => setBgmiUid(e.target.value)}
-            placeholder="Enter your BGMI UID"
-            className="w-full mt-1 px-4 py-3 bg-black border border-white/20 rounded-lg
-            outline-none focus:border-toxic"
-          />
-        </div>
+            <div className="p-6 space-y-6">
+            {/* 💳 PAYMENT QR */}
+<div className="bg-white rounded-xl p-4 flex flex-col items-center">
+  <p className="text-black font-semibold text-sm mb-2">
+    Pay ₹{selectedTournament?.entryFee}
+  </p>
 
-        {/* PAYMENT SECTION */}
-        <div className="bg-white rounded-xl p-6 flex flex-col items-center">
-          <p className="font-semibold text-black mb-2">
-            Scan to Pay ₹{selectedTournament?.entryFee}
-          </p>
+  <img
+    src="/qr.png"   // put your QR image in public folder
+    alt="Payment QR Code"
+    className="w-40 h-40 object-contain"
+  />
 
-          {/* QR IMAGE */}
-          <img
-            src="/qr.png"   // 🔥 replace with your QR image path
-            alt="QR Code"
-            className="w-40 h-40 object-contain mb-4"
-          />
+  <p className="text-xs text-gray-600 mt-2 text-center">
+    Scan & complete payment, then upload screenshot
+  </p>
+</div>
 
-         
-        </div>
+              <input
+                value={ign}
+                onChange={e => setIgn(e.target.value)}
+                placeholder="Ex: SoulMortal"
+                className="w-full px-4 py-2 rounded-lg bg-black border border-white/20 text-white outline-none focus:border-toxic"
+              />
 
-        {/* UPLOAD SCREENSHOT */}
-        <div>
-          <label className="text-sm text-gray-400">
-            Upload Payment Screenshot
-          </label>
+              <input
+                value={bgmiUid}
+                onChange={e => setBgmiUid(e.target.value)}
+                placeholder="BGMI UID"
+                className="w-full px-4 py-2 rounded-lg bg-black border border-white/20 text-white outline-none focus:border-toxic"
+              />
 
-          <input
+              <input
   type="file"
   accept="image/*"
   onChange={e => {
     const file = e.target.files[0]
+    if (!file) return
     setPaymentScreenshot(file)
     setPreviewUrl(URL.createObjectURL(file))
   }}
-  className="w-full mt-2 text-sm text-gray-300
+  className="w-full text-sm text-gray-300
     file:bg-toxic file:text-black file:px-4 file:py-2
     file:rounded file:border-0 cursor-pointer"
 />
-{previewUrl && (
-  <img
-    src={previewUrl}
-    alt="Preview"
-    className="mt-4 rounded-lg max-h-60 border border-white/20"
-  />
-)}
-{/* UPLOAD PROGRESS */}
-{isUploading && (
-  <div className="mt-4">
-    <div className="flex justify-between text-xs text-gray-400 mb-1">
-      <span>Uploading screenshot</span>
-      <span>{uploadProgress}%</span>
-    </div>
-    <div className="h-2 bg-gray-800 rounded overflow-hidden">
-      <div
-        className="h-full bg-toxic transition-all"
-        style={{ width: `${uploadProgress}%` }}
-      />
-    </div>
-  </div>
-)}
 
 
+              {previewUrl && (
+                <img
+                  src={previewUrl}
+                  alt="Payment screenshot preview"   // ✅ ADDED
+                  className="rounded-lg max-h-60"
+                />
+              )}
+
+              {/* ✅ ADDED: upload state usage */}
+              {isUploading && (
+                <p className="text-xs text-gray-400">
+                  Uploading… {uploadProgress}%
+                </p>
+              )}
+
+              {message && (
+                <p className="text-center text-sm text-red-400">
+                  {message}
+                </p>
+              )}
+
+              <button
+  onClick={confirmJoin}
+  disabled={joining || !paymentScreenshot}
+  className="w-full py-3 rounded-xl bg-toxic text-black font-orbitron disabled:opacity-40"
+>
+
+                {joining ? "PROCESSING..." : "CONFIRM JOIN"}
+              </button>
+
+              <button
+                onClick={() => setShowJoinModal(false)}
+                className="w-full text-center text-gray-400"
+              >
+                Cancel
+              </button>
+
+            </div>
+          </div>
         </div>
-
-        {/* CONFIRM BUTTON */}
-        <button
-          onClick={confirmJoin}
-          disabled={joining}
-          className="w-full py-4 rounded-xl bg-toxic text-black
-          font-orbitron tracking-widest text-lg hover:shadow-toxic transition
-          disabled:opacity-60"
-        >
-          {joining ? "PROCESSING..." : "CONFIRM JOIN"}
-        </button>
-
-        {/* CANCEL */}
-        <button
-          onClick={() => setShowJoinModal(false)}
-          className="w-full text-center text-gray-400 hover:text-white"
-        >
-          Cancel
-        </button>
-
-        {message && (
-          <p className="text-center text-sm text-red-400">
-            {message}
-          </p>
-        )}
-
-      </div>
-    </div>
-  </div>
-)}
-
+      )}
 
     </div>
   )

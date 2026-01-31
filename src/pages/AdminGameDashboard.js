@@ -151,8 +151,12 @@ export default function AdminGameDashboard() {
 
   // ✅ Update payment status
   await updateDoc(playerRef, {
-    paymentStatus: status
+  paymentStatus: status,
+  ...(status === "rejected" && {
+    lastRejectedAt: Date.now()
   })
+})
+
 
   // 🔻 AUTO DECREMENT IF REJECTED
   if (status === "rejected" && prevStatus !== "rejected") {
