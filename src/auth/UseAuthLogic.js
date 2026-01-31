@@ -101,7 +101,7 @@ export default function useAuthLogic() {
 
     setLoading(true)
     try {
-      const res = await fetch("src/api/send-otp", {
+      const res = await fetch("api/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email })
@@ -130,7 +130,7 @@ export default function useAuthLogic() {
 
     setLoading(true)
     try {
-      const res = await fetch("src/api/verify-otp", {
+      const res = await fetch("api/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp })
