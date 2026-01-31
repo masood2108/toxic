@@ -15,6 +15,9 @@ export default function AdminGameSelect() {
       navigate("/")
     }
   }, [navigate])
+ useEffect(() => {
+    document.title = "ToxicRush Admin • Select Game"
+  }, [])
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">

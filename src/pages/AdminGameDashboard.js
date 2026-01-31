@@ -67,6 +67,15 @@ const MAP_ICONS = {
       navigate("/")
     }
   }, [navigate])
+useEffect(() => {
+  if (selectedTournament) {
+    document.title = `Room Ops • ${selectedTournament.map} | ToxicRush`
+  } else {
+    document.title = `ToxicRush Admin • ${gameId.toUpperCase()}`
+  }
+}, [gameId, selectedTournament])
+
+
 
   useEffect(() => {
     const q = query(

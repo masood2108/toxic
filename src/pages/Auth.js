@@ -1,4 +1,5 @@
 import useAuthLogic from "../auth/UseAuthLogic"
+import { useEffect } from "react"
 
 export default function Auth() {
   const {
@@ -28,6 +29,12 @@ export default function Auth() {
     verifyEmailOtp,
     forgotPassword
   } = useAuthLogic()
+useEffect(() => {
+  document.title =
+    mode === "login"
+      ? "ToxicRush • Login"
+      : "ToxicRush • Sign Up"
+}, [mode])
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">

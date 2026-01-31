@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { signOut } from "firebase/auth"
 import { auth } from "../firebase"
@@ -36,6 +36,10 @@ export default function Games() {
   }
 
   const game = games[active]
+  useEffect(() => {
+  document.title = `ToxicRush • ${game.name}`
+}, [game])
+
 
   return (
     <div

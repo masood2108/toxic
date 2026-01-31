@@ -24,6 +24,14 @@ export default function Profile() {
     bgmiUid: "",
     freeFireUid: ""
   })
+/* 🆕 TAB TITLE */
+useEffect(() => {
+  if (data?.name) {
+    document.title = `ToxicRush • ${data.name}'s Profile`
+  } else {
+    document.title = "ToxicRush • Profile"
+  }
+}, [data])
 
   /* 🔥 REALTIME PROFILE */
   useEffect(() => {
