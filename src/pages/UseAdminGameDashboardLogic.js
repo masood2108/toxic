@@ -135,23 +135,54 @@ useEffect(() => {
 }, [])
 
   /* ================= ADMIN WITHDRAWALS (REALTIME) ================= */
+/* ================= WITHDRAWALS (REALTIME + ANALYTICS) ================= */
 useEffect(() => {
-  const unsub = onSnapshot(
-    collection(db, "withdrawals"),
-    snap => {
-      const history = snap.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      }))
-      setWithdrawHistory(history)
-      setWithdrawals(history) // ✅ NOW withdrawals IS USED
+  const unsub = onSnapshot(collection(db, "withdrawals"), snap => {
+    let totalWithdrawals = 0
+    const history = []
+    const withdrawalTx = []
 
-    }
-  )
+    snap.docs.forEach(d => {
+      const w = { id: d.id, ...d.data() }
+      history.push(w)
+
+      if (w.status === "approved") {
+        totalWithdrawals += Number(w.amount || 0)
+
+        // 👇 count withdrawals as transactions
+        withdrawalTx.push({
+          id: d.id,
+          name: w.name || "User",
+          amount: Number(w.amount),
+          type: "withdrawal",
+          status: "completed",
+          time: w.processedAt
+            ? new Date(w.processedAt).toLocaleString()
+            : new Date(w.requestedAt).toLocaleString()
+        })
+      }
+    })
+
+    setWithdrawals(history)
+    setWithdrawHistory(history)
+
+    setAnalytics(prev => ({
+      ...prev,
+      totalWithdrawals,
+      netRevenue:
+        prev.totalDeposits -
+        prev.totalPrizes -
+        totalWithdrawals
+    }))
+
+    // 👇 merge with deposits
+    setTransactions(prev =>
+      [...prev.filter(t => t.type === "deposit"), ...withdrawalTx]
+    )
+  })
 
   return () => unsub()
 }, [])
-
 
 
 
@@ -312,12 +343,13 @@ useEffect(() => {
           }
         }
 
-        setAnalytics(prev => ({
-          ...prev,
-          totalDeposits: deposits,
-          totalTransactions: tx,
-          netRevenue: deposits - prev.totalPrizes
-        }))
+setAnalytics(prev => ({
+  ...prev,
+  totalDeposits: deposits,
+  totalTransactions: tx + prev.totalWithdrawals > 0 ? 1 : 0
+}))
+
+
       }
     )
 
