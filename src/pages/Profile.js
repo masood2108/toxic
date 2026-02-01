@@ -5,18 +5,31 @@ import {
   onSnapshot,
   updateDoc,
   collection,
-  getDoc
+  getDoc,
+  setDoc
 } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
+import AISupportChat from "../components/AISupportChat"
 
 export default function Profile() {
 
   const user = auth.currentUser
   const navigate = useNavigate()
 
+  /* ================= WITHDRAW STATE ================= */
+  const [withdrawOpen, setWithdrawOpen] = useState(false)
+  const [withdrawAmount, setWithdrawAmount] = useState("")
+  const [upiId, setUpiId] = useState("")
+  const [withdrawStatus, setWithdrawStatus] = useState(null)
+  const [withdrawHistory, setWithdrawHistory] = useState([])
+
+  /* ================= PROFILE STATE ================= */
   const [data, setData] = useState(null)
   const [matches, setMatches] = useState([])
   const [editing, setEditing] = useState(false)
+
+  /* ================= AI SUPPORT ================= */
+  const [showAI, setShowAI] = useState(false)
 
   const [form, setForm] = useState({
     name: "",
@@ -24,16 +37,38 @@ export default function Profile() {
     bgmiUid: "",
     freeFireUid: ""
   })
-/* 🆕 TAB TITLE */
-useEffect(() => {
-  if (data?.name) {
-    document.title = `ToxicRush • ${data.name}'s Profile`
-  } else {
-    document.title = "ToxicRush • Profile"
-  }
-}, [data])
 
-  /* 🔥 REALTIME PROFILE */
+  /* ================= REQUEST WITHDRAW ================= */
+  const requestWithdraw = async () => {
+    if (!withdrawAmount || !upiId) {
+      alert("Enter amount and UPI ID")
+      return
+    }
+
+    await setDoc(doc(collection(db, "withdrawals")), {
+      userId: user.uid,
+      name: data.name,
+      email: data.email,
+      amount: Number(withdrawAmount),
+      method: "upi",
+      upiId,
+      status: "pending",
+      requestedAt: Date.now()
+    })
+
+    setWithdrawAmount("")
+    setUpiId("")
+    setWithdrawOpen(false)
+  }
+
+  /* ================= PAGE TITLE ================= */
+  useEffect(() => {
+    document.title = data?.name
+      ? `ToxicRush • ${data.name}'s Profile`
+      : "ToxicRush • Profile"
+  }, [data])
+
+  /* ================= REALTIME PROFILE ================= */
   useEffect(() => {
     if (!user) return
 
@@ -51,48 +86,65 @@ useEffect(() => {
     })
   }, [user])
 
-  /* 🎮 REALTIME MATCH HISTORY (FIXED & SAFE) */
+  /* ================= WITHDRAW STATUS ================= */
   useEffect(() => {
     if (!user) return
 
-    const unsub = onSnapshot(
-      collection(db, "tournaments"),
-      async snap => {
-        const result = []
+    return onSnapshot(collection(db, "withdrawals"), snap => {
+      const pending = snap.docs
+        .map(d => d.data())
+        .find(d => d.userId === user.uid && d.status === "pending")
 
-        for (const tDoc of snap.docs) {
-          const tData = tDoc.data()
+      setWithdrawStatus(pending || null)
+    })
+  }, [user])
 
-          const playerRef = doc(
-            db,
-            "tournamentPlayers",
-            tDoc.id,
-            "players",
-            user.uid
-          )
+  /* ================= WITHDRAW HISTORY ================= */
+  useEffect(() => {
+    if (!user) return
 
-          const playerSnap = await getDoc(playerRef)
+    const unsub = onSnapshot(collection(db, "withdrawals"), snap => {
+      const history = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(w => w.userId === user.uid)
+        .sort((a, b) => b.requestedAt - a.requestedAt)
 
-          if (playerSnap.exists()) {
-            result.push({
-              id: tDoc.id,
-              ...tData,
-              ...playerSnap.data()
-            })
-          }
-        }
-
-        result.sort((a, b) => b.joinedAt - a.joinedAt)
-        setMatches(result)
-      }
-    )
+      setWithdrawHistory(history)
+    })
 
     return () => unsub()
   }, [user])
 
-  /* 💾 SAVE PROFILE */
-  const saveProfile = async () => {
+  /* ================= MATCH HISTORY ================= */
+  useEffect(() => {
     if (!user) return
+
+    const unsub = onSnapshot(collection(db, "tournaments"), async snap => {
+      const result = []
+
+      for (const tDoc of snap.docs) {
+        const playerSnap = await getDoc(
+          doc(db, "tournamentPlayers", tDoc.id, "players", user.uid)
+        )
+
+        if (playerSnap.exists()) {
+          result.push({
+            id: tDoc.id,
+            ...tDoc.data(),
+            ...playerSnap.data()
+          })
+        }
+      }
+
+      result.sort((a, b) => b.joinedAt - a.joinedAt)
+      setMatches(result)
+    })
+
+    return () => unsub()
+  }, [user])
+
+  /* ================= SAVE PROFILE ================= */
+  const saveProfile = async () => {
     await updateDoc(doc(db, "users", user.uid), form)
     setEditing(false)
   }
@@ -102,48 +154,39 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-black text-white px-6 pb-24">
 
-      {/* HEADER */}
-      <div className="flex items-center gap-4 py-6 border-b border-white/10">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-toxic text-xl"
-        >
-          ←
-        </button>
-        <h1 className="font-orbitron tracking-widest text-lg">
-          PROFILE
-        </h1>
-      </div>
-
-      {/* PROFILE CARD */}
+      {/* ================= PROFILE CARD ================= */}
       <div className="mt-10 bg-gradient-to-br from-black to-[#120900]
-                      border border-toxic/40 rounded-3xl p-8 text-center">
+        border border-toxic/40 rounded-3xl p-8 text-center">
 
         <div className="w-24 h-24 mx-auto rounded-full border-2 border-toxic
-                        flex items-center justify-center text-3xl">
+          flex items-center justify-center text-3xl">
           👤
         </div>
 
         <h2 className="mt-4 text-2xl font-bold">{data.name}</h2>
         <p className="text-gray-400 text-sm">{data.email}</p>
-
-        {data.role === "admin" && (
-          <span className="inline-block mt-3 px-4 py-1 text-xs
-                           bg-red-600/20 border border-red-500
-                           text-red-400 rounded-full">
-            ADMIN
-          </span>
-        )}
       </div>
 
-      {/* INFO */}
+      {/* ================= INFO ================= */}
       <div className="mt-8 space-y-4">
         <Info label="WhatsApp" value={data.whatsapp || "Not Set"} />
-        <Info label="BGMI UID" value={data.bgmiUid || "Not Set"} danger={!data.bgmiUid} />
-        <Info label="Free Fire UID" value={data.freeFireUid || "Not Set"} danger={!data.freeFireUid} />
+        <Info label="BGMI UID" value={data.bgmiUid || "Not Set"} />
+        <Info label="Free Fire UID" value={data.freeFireUid || "Not Set"} />
       </div>
 
-      {/* 🎮 MATCH HISTORY */}
+      {/* ================= WITHDRAW STATUS ================= */}
+      {withdrawStatus && (
+        <div className="mt-6 bg-yellow-500/10 border border-yellow-500 rounded-xl p-4">
+          <p className="text-yellow-400 font-semibold">
+            Withdrawal Pending
+          </p>
+          <p className="text-sm text-gray-300">
+            Amount: ₹{withdrawStatus.amount}
+          </p>
+        </div>
+      )}
+
+      {/* ================= MATCH HISTORY ================= */}
       <div className="mt-10">
         <h2 className="font-orbitron text-lg mb-4 tracking-widest">
           MATCH HISTORY
@@ -161,48 +204,39 @@ useEffect(() => {
               key={m.id}
               className="bg-white/5 border border-white/10 rounded-xl p-4"
             >
-              <div className="flex justify-between">
-                <p className="font-semibold">
-                  {m.game?.toUpperCase()} • {m.map} • {m.type}
-                </p>
-
-                <span className={`text-xs px-3 py-1 rounded-full
-                  ${m.paymentStatus === "approved"
-                    ? "bg-green-500/20 text-green-400"
-                    : m.paymentStatus === "rejected"
-                      ? "bg-red-500/20 text-red-400"
-                      : "bg-yellow-500/20 text-yellow-400"}
-                `}>
-                  {m.paymentStatus?.toUpperCase()}
-                </span>
-              </div>
-
-              <p className="text-xs text-gray-400 mt-1">
-                Prize ₹{m.prize} • Entry ₹{m.entryFee}
+              <p className="font-semibold">
+                {m.game?.toUpperCase()} • {m.map}
               </p>
-
-              <p className="text-xs text-gray-500 mt-1">
-                {new Date(m.joinedAt).toLocaleString()}
+              <p className="text-xs text-gray-400">
+                Status: {m.paymentStatus?.toUpperCase()}
               </p>
-
-              {m.paymentStatus === "approved" && m.roomId && (
-                <div className="mt-3 text-sm bg-green-900/20
-                                border border-green-500 rounded-lg p-2">
-                  Room ID: <b>{m.roomId}</b> | Pass: <b>{m.roomPassword}</b>
-                </div>
-              )}
             </div>
           ))}
         </div>
       </div>
 
-      {/* ACTIONS */}
+      {/* ================= ACTIONS ================= */}
       <div className="mt-10 space-y-4">
         <button
           onClick={() => setEditing(true)}
           className="w-full bg-white text-black py-3 rounded-xl font-bold"
         >
           EDIT PROFILE
+        </button>
+
+        <button
+          onClick={() => setWithdrawOpen(true)}
+          className="w-full bg-green-500 text-black py-3 rounded-xl font-bold"
+        >
+          💸 WITHDRAW PRIZE MONEY
+        </button>
+
+        <button
+          onClick={() => setShowAI(true)}
+          className="w-full bg-gradient-to-r from-pink-500 to-purple-600
+                     text-white py-3 rounded-xl font-bold"
+        >
+          🤖 AI SUPPORT
         </button>
 
         <button
@@ -216,12 +250,98 @@ useEffect(() => {
         </button>
       </div>
 
-      {/* EDIT MODAL */}
+      {/* ================= AI SUPPORT ================= */}
+      <AISupportChat open={showAI} onClose={() => setShowAI(false)} />
+
+      {/* ================= WITHDRAW MODAL ================= */}
+      {withdrawOpen && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center px-4">
+          <div className="bg-[#0b0b0b] border border-green-500 rounded-2xl p-6 w-full max-w-md">
+
+            <h2 className="font-orbitron text-lg mb-4">
+              WITHDRAW PRIZE
+            </h2>
+
+            <input
+              value={withdrawAmount}
+              onChange={e => setWithdrawAmount(e.target.value)}
+              placeholder="Amount (₹)"
+              className="admin-input mb-3"
+            />
+
+            <input
+              value={upiId}
+              onChange={e => setUpiId(e.target.value)}
+              placeholder="UPI ID (example@upi)"
+              className="admin-input mb-3"
+            />
+
+            <button
+              onClick={requestWithdraw}
+              className="w-full bg-green-500 text-black py-3 rounded-xl font-bold"
+            >
+              REQUEST WITHDRAW
+            </button>
+
+            <button
+              onClick={() => setWithdrawOpen(false)}
+              className="w-full mt-2 text-gray-400"
+            >
+              Cancel
+            </button>
+
+          </div>
+        </div>
+      )}
+
+      {/* ================= WITHDRAW HISTORY ================= */}
+      <div className="mt-12">
+        <h2 className="font-orbitron text-lg mb-4 tracking-widest">
+          WITHDRAWAL HISTORY
+        </h2>
+
+        {withdrawHistory.length === 0 && (
+          <p className="text-gray-400 text-sm">
+            No withdrawals requested yet.
+          </p>
+        )}
+
+        <div className="space-y-4">
+          {withdrawHistory.map(w => (
+            <div
+              key={w.id}
+              className="bg-white/5 border border-white/10 rounded-xl p-4"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-semibold">₹{w.amount}</p>
+                  <p className="text-xs text-gray-400">UPI: {w.upiId}</p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(w.requestedAt).toLocaleString()}
+                  </p>
+                </div>
+
+                <span className={`px-3 py-1 rounded-full text-xs font-bold
+                  ${
+                    w.status === "approved"
+                      ? "bg-green-500/20 text-green-400"
+                      : w.status === "rejected"
+                      ? "bg-red-500/20 text-red-400"
+                      : "bg-yellow-500/20 text-yellow-400"
+                  }`}
+                >
+                  {w.status.toUpperCase()}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ================= EDIT MODAL ================= */}
       {editing && (
-        <div className="fixed inset-0 bg-black/90 z-50
-                        flex items-center justify-center px-4">
-          <div className="bg-[#0b0b0b] border border-toxic
-                          rounded-2xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center px-4">
+          <div className="bg-[#0b0b0b] border border-toxic rounded-2xl p-6 w-full max-w-md">
 
             <h2 className="font-orbitron text-lg mb-4">
               EDIT PROFILE
@@ -260,11 +380,9 @@ useEffect(() => {
   )
 }
 
-const Info = ({ label, value, danger }) => (
+const Info = ({ label, value }) => (
   <div className="flex justify-between bg-white/5 rounded-xl p-4">
     <span className="text-gray-400">{label}</span>
-    <span className={danger ? "text-red-400" : "text-white"}>
-      {value}
-    </span>
+    <span className="text-white">{value}</span>
   </div>
 )

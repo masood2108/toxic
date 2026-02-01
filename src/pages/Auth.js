@@ -29,167 +29,147 @@ export default function Auth() {
     verifyEmailOtp,
     forgotPassword
   } = useAuthLogic()
-useEffect(() => {
-  document.title =
-    mode === "login"
-      ? "ToxicRush • Login"
-      : "ToxicRush • Sign Up"
-}, [mode])
+
+  useEffect(() => {
+    document.title =
+      mode === "login"
+        ? "ToxicRush • Login"
+        : "ToxicRush • Sign Up"
+  }, [mode])
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
+    <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden px-4">
 
-      {/* BACKGROUND ENERGY */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,77,0,0.18),transparent_60%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(255,122,0,0.08),transparent_60%)]" />
+      {/* BACKGROUND */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black via-[#0b0b0b] to-black" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,0,128,0.18),transparent_60%)]" />
 
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-4">
+      <div className="relative z-10 w-full max-w-md text-center">
+
+        {/* TITLE */}
+        <h1 className="text-5xl font-extrabold mb-3 bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+          ToxicRush Esports
+        </h1>
+
+        <p className="text-white text-lg mb-1">
+          Join the rush. Dominate the game.
+        </p>
+        <p className="text-red-500 font-semibold mb-10">
+          Compete. Dominate. Win.
+        </p>
 
         {/* CARD */}
-        <div
-          className="w-full max-w-md rounded-3xl p-8
-          bg-black/70 backdrop-blur-xl
-          border border-white/10
-          shadow-[0_0_60px_rgba(255,77,0,0.15)]
-          animate-floatSlow"
-        >
-
-          {/* LOGO */}
-          <h1 className="text-center font-orbitron text-4xl tracking-[0.35em] mb-2">
-            <span className="text-white">TOXIC</span>
-            <span className="text-[#ff4d00]">RUSH</span>
-          </h1>
-
-          <p className="text-center text-gray-400 tracking-[0.3em] mb-8 text-xs">
-            {mode === "login" ? "ENTER THE ARENA" : "CREATE YOUR ID"}
-          </p>
+        <div className="rounded-3xl p-8 bg-gradient-to-br from-pink-500 to-purple-600 shadow-2xl">
 
           {/* MODE SWITCH */}
-          <div className="grid grid-cols-2 mb-6 bg-black/50 rounded-full p-1 border border-white/10">
-            {["login", "signup"].map(m => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`py-2 rounded-full text-xs tracking-widest transition-all
-                  ${
-                    mode === m
-                      ? "bg-[#ff4d00] text-black shadow-[0_0_20px_rgba(255,77,0,0.6)]"
-                      : "text-gray-400 hover:text-white"
-                  }`}
-              >
-                {m === "login" ? "LOGIN" : "SIGN UP"}
-              </button>
-            ))}
+          <div className="flex bg-white/10 rounded-full p-1 mb-6">
+            <button
+              onClick={() => setMode("login")}
+              className={`flex-1 py-2 rounded-full font-semibold transition
+                ${mode === "login"
+                  ? "bg-[#ff6a5c] text-white"
+                  : "text-white/70 hover:text-white"}
+              `}
+            >
+              LOGIN
+            </button>
+            <button
+              onClick={() => setMode("signup")}
+              className={`flex-1 py-2 rounded-full font-semibold transition
+                ${mode === "signup"
+                  ? "bg-[#ff6a5c] text-white"
+                  : "text-white/70 hover:text-white"}
+              `}
+            >
+              SIGN UP
+            </button>
           </div>
 
-          <div className="space-y-5">
+          {/* INPUTS */}
+          <div className="space-y-4">
 
-            {/* ================= SIGNUP ================= */}
             {mode === "signup" && (
               <>
                 <input
-                  className="auth-input"
-                  placeholder="FULL NAME"
+                  className="w-full px-4 py-3 rounded-xl bg-black/40 text-white placeholder-white/60 outline-none"
+                  placeholder="Full Name"
                   value={name}
                   onChange={e => setName(e.target.value)}
                 />
 
                 <input
-                  className="auth-input"
-                  placeholder="MOBILE (+91XXXXXXXXXX)"
+                  className="w-full px-4 py-3 rounded-xl bg-black/40 text-white placeholder-white/60 outline-none"
+                  placeholder="Mobile (+91XXXXXXXXXX)"
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                 />
-
-                <input
-                  className="auth-input"
-                  placeholder="EMAIL"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                />
-
-                <input
-                  className="auth-input"
-                  type="password"
-                  placeholder="PASSWORD"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                />
               </>
             )}
 
-            {/* ================= LOGIN ================= */}
-            {mode === "login" && (
-              <>
-                <input
-                  className="auth-input"
-                  placeholder="EMAIL"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                />
+            <input
+              className="w-full px-4 py-3 rounded-xl bg-black/40 text-white placeholder-white/60 outline-none"
+              placeholder="Email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
 
-                {!useOtp && (
-                  <input
-                    className="auth-input"
-                    type="password"
-                    placeholder="PASSWORD"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                  />
-                )}
+            {!useOtp && (
+              <input
+                type="password"
+                className="w-full px-4 py-3 rounded-xl bg-black/40 text-white placeholder-white/60 outline-none"
+                placeholder="Password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+            )}
 
-                {useOtp && otpSent && (
-                  <input
-                    className="auth-input"
-                    placeholder="ENTER OTP"
-                    value={otp}
-                    onChange={e => setOtp(e.target.value)}
-                  />
-                )}
-
-                {/* LOGIN OPTIONS ROW */}
-                <div className="flex items-center justify-between mt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUseOtp(p => !p)
-                      setPassword("")
-                      setOtp("")
-                    }}
-                    className="text-xs tracking-widest text-[#ff4d00] hover:text-white transition"
-                  >
-                    {useOtp ? "LOGIN WITH PASSWORD" : "LOGIN WITH OTP"}
-                  </button>
-
-                  {!useOtp && (
-                    <button
-                      onClick={forgotPassword}
-                      className="text-xs tracking-widest text-gray-400 hover:text-[#ff4d00] transition"
-                    >
-                      FORGOT PASSWORD?
-                    </button>
-                  )}
-                </div>
-              </>
+            {useOtp && otpSent && (
+              <input
+                className="w-full px-4 py-3 rounded-xl bg-black/40 text-white placeholder-white/60 outline-none"
+                placeholder="Enter OTP"
+                value={otp}
+                onChange={e => setOtp(e.target.value)}
+              />
             )}
           </div>
 
-          {/* ================= MESSAGE ================= */}
-          {message && (
-            <div
-              className={`mt-5 flex gap-3 px-4 py-3 rounded-xl text-sm border
-                ${
-                  isError
-                    ? "bg-red-500/10 border-red-500/30 text-red-400"
-                    : "bg-green-500/10 border-green-500/30 text-green-400"
-                }`}
-            >
-              <span className="text-lg">{isError ? "✖" : "✔"}</span>
-              <span>{message}</span>
+          {/* OPTIONS */}
+          {mode === "login" && (
+            <div className="flex justify-between mt-4 text-sm text-white/80">
+              <button
+                onClick={() => {
+                  setUseOtp(p => !p)
+                  setPassword("")
+                  setOtp("")
+                }}
+                className="hover:text-white transition"
+              >
+                {useOtp ? "Login with Password" : "Login with OTP"}
+              </button>
+
+              {!useOtp && (
+                <button
+                  onClick={forgotPassword}
+                  className="hover:text-white transition"
+                >
+                  Forgot password?
+                </button>
+              )}
             </div>
           )}
 
-          {/* ================= CTA ================= */}
+          {/* MESSAGE */}
+          {message && (
+            <div
+              className={`mt-5 p-3 rounded-xl text-sm text-center
+                ${isError ? "bg-red-500/20 text-red-200" : "bg-green-500/20 text-green-200"}
+              `}
+            >
+              {message}
+            </div>
+          )}
+
+          {/* CTA */}
           <button
             onClick={
               mode === "login"
@@ -201,8 +181,7 @@ useEffect(() => {
                 : signup
             }
             disabled={loading}
-            className="mt-8 w-full py-3 rounded-xl font-orbitron tracking-[0.3em]
-              text-black btn-toxic transition-all"
+            className="mt-8 w-full py-4 rounded-xl bg-[#ff6a5c] text-white font-bold text-lg tracking-wide hover:scale-[1.02] transition disabled:opacity-60"
           >
             {loading
               ? "PROCESSING..."
@@ -211,7 +190,7 @@ useEffect(() => {
                 ? otpSent
                   ? "VERIFY OTP"
                   : "GET OTP"
-                : "ENTER"
+                : "LOGIN"
               : "CREATE ACCOUNT"}
           </button>
 

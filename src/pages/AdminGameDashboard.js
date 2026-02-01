@@ -1,356 +1,653 @@
-import { useEffect, useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
-import { auth, db } from "../firebase"
-import {
-  collection,
-  doc,
-  setDoc,
-  updateDoc,
-  onSnapshot,
-  serverTimestamp,
-  query,
-  where,
-  getDoc,
-  orderBy
-} from "firebase/firestore"
+import { useEffect } from "react"
+import useAdminGameDashboardLogic from "./UseAdminGameDashboardLogic"
 
-const ADMIN_EMAILS = [
-  "masoodhussainr8@gmail.com",
-  "officialtoxicrush.esports@gmail.com"
+/* ================= CONSTANTS ================= */
+const GAME_MODES = [
+  "SOLO TPP",
+  "SOLO FPP",
+  "DUO TPP",
+  "DUO FPP",
+  "SQUAD TPP",
+  "SQUAD FPP"
 ]
 
-const normalize = v => v?.toLowerCase()
-
-const MAPS = {
+const MAPS_BY_GAME = {
   bgmi: ["Erangel", "Miramar", "Sanhok", "Vikendi", "Livik", "Nusa"],
-  freefire: ["Bermuda", "Bermuda Remastered", "Purgatory", "Kalahari", "Alpine", "NeXTerra"]
-}
-
-/* 🆕 MAP ICONS */
-const MAP_ICONS = {
-  Erangel: "🌍",
-  Miramar: "🏜️",
-  Sanhok: "🌴",
-  Vikendi: "❄️",
-  Livik: "⚡",
-  Nusa: "🏝️",
-  Bermuda: "🌊",
-  "Bermuda Remastered": "🔥",
-  Purgatory: "☠️",
-  Kalahari: "🏜️",
-  Alpine: "🏔️",
-  NeXTerra: "🚀"
-}
-
-/* 🆕 MAP IMAGES (USED IN CREATE UI) */
-const MAP_IMAGES = {
-  Erangel: "https://wallpapers.com/images/high/pubg-season-3-erangel-new-map-bel56ctm7szmed63.webp",
-  Miramar: "https://wallpapers.com/images/high/playerunknowns-battlegrounds-4k-fr44xgm1ts02ab4m.webpg",
-  Sanhok: "https://wallpapers.com/images/high/pubg-season-3-welcome-to-sanhok-7hb85ror77gq7cl2.webp",
-  Vikendi: "https://wallpapers.com/images/high/pubg-1440p-vikendi-drop-ziatf2qem16sw87b.webp",
-  Livik: "https://imgs.search.brave.com/eSAgjyBD8xICsJbjpzvBEuX0q_GBnbIPhLpdNixHx4k/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly93YWxs/cGFwZXJjYXZlLmNv/bS93cC93cDY5MDIz/OTcuanBn",
-  Nusa: "https://imgs.search.brave.com/OA8Q4gZcBagqiWDI9h7JEpvYdWLg1MtWsn7cQlf7n-A/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9zdGF0/aWNnLnNwb3J0c2tl/ZWRhLmNvbS9lZGl0/b3IvMjAyMy8wNi84/ODE0NS0xNjg3Mjcw/MDIyMDI5OC0xOTIw/LmpwZw",
-  Bermuda: "https://imgs.search.brave.com/PmvRTkzr7Zzt0BJlL5BxNvQIFm8tf0jgETyUVaZ_pM4/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9zdGF0/aWNnLnNwb3J0c2tl/ZWRhLmNvbS9lZGl0/b3IvMjAyMC8wOS83/MjJmNi0xNjAxMTc1/NjUwMjYyMy04MDAu/anBn",
-  "Bermuda Remastered": "http://imgs.search.brave.com/jH-3xQIBzaM99d9r8SAF3SYmQGaURpEAYQUYiu_xo64/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9zdGF0/aWMuZGlnaXQuaW4v/ZGVmYXVsdC8zYTNi/NTk2MDQyZWRiOTIy/M2VjYTk1Y2ZjYTM3/NWVmNWNlY2MxNjA2/LmpwZWc",
-  Purgatory: "https://imgs.search.brave.com/Mi6MJyK7ppDbaBSjEQ1HPkXIEa84Rv75WRUIQMn5USg/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93YWxs/cGFwZXJhY2Nlc3Mu/Y29tL2Z1bGwvOTUz/MjEzNS5qcGc",
-  Kalahari: "https://imgs.search.brave.com/SsQfQ3aNleBkdjM-01R6jTxEnPOByE0bcJqioE7zIuk/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93YWxs/cGFwZXJhY2Nlc3Mu/Y29tL2Z1bGwvOTUz/MjE1Mi5qcGc",
-  Alpine: "https://imgs.search.brave.com/nRf0-UkiPVE1atIBhzRJdMAjEErcn9msaFSFHRj1M8M/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzgyLzY5/LzA4LzgyNjkwOGVk/MmE1OGFkZDVmN2Ux/MzU5OThjNTk2NjQ0/LmpwZw",
-  NeXTerra: "https://imgs.search.brave.com/O3iVlo90er6ssZV534mqehjeCUX6TnWCt1C-ABCrVcc/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9zdGF0/aWNnLnNwb3J0c2tl/ZWRhLmNvbS9lZGl0/b3IvMjAyMi8wOC84/NThjMC0xNjYxMDI1/MDkyMDk2Mi0xOTIw/LmpwZw"
+  freefire: [
+    "Bermuda",
+    "Bermuda Remastered",
+    "Purgatory",
+    "Kalahari",
+    "Alpine",
+    "NeXTerra"
+  ]
 }
 
 export default function AdminGameDashboard() {
-  const { gameId } = useParams()
-  const navigate = useNavigate()
-  const gameKey = normalize(gameId)
+  const d = useAdminGameDashboardLogic()
 
-  const [tournaments, setTournaments] = useState([])
-  const [selectedTournament, setSelectedTournament] = useState(null)
-  const [players, setPlayers] = useState([])
-  const [zoomImage, setZoomImage] = useState(null)
-
-  const [map, setMap] = useState("")
-  const [type, setType] = useState("SOLO")
-  const [entryFee, setEntryFee] = useState("")
-  const [prize, setPrize] = useState("")
-  const [maxPlayers, setMaxPlayers] = useState("")
-  const [startTime, setStartTime] = useState("")
-
-  const [roomId, setRoomId] = useState("")
-  const [roomPassword, setRoomPassword] = useState("")
-
-  /* 🔐 AUTH */
   useEffect(() => {
-    if (!auth.currentUser || !ADMIN_EMAILS.includes(auth.currentUser.email)) {
-      navigate("/")
-    }
-  }, [navigate])
+    if (!d.gameKey) return
+  }, [d.gameKey])
 
-  /* 🏷️ TITLE */
-  useEffect(() => {
-    if (selectedTournament) {
-      document.title = `Room Ops • ${selectedTournament.map} | ToxicRush`
-    } else {
-      document.title = `ToxicRush Admin • ${gameId.toUpperCase()}`
-    }
-  }, [gameId, selectedTournament])
-
-  /* 📡 FETCH TOURNAMENTS */
-  useEffect(() => {
-    const q = query(
-      collection(db, "tournaments"),
-      where("game", "==", gameKey),
-      orderBy("createdAtClient", "desc")
-    )
-    return onSnapshot(q, snap => {
-      setTournaments(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    })
-  }, [gameKey])
-
-  /* 👥 FETCH PLAYERS */
-  useEffect(() => {
-    if (!selectedTournament) {
-      setPlayers([])
-      return
-    }
-    return onSnapshot(
-      collection(db, "tournamentPlayers", selectedTournament.id, "players"),
-      snap => {
-        setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      }
-    )
-  }, [selectedTournament])
-
-  /* 🚀 CREATE TOURNAMENT */
-  const createTournament = async () => {
-    if (!map || !entryFee || !prize || !maxPlayers || !startTime) {
-      alert("Fill all fields")
-      return
-    }
-
-    const id = `${gameKey}_${type.toLowerCase()}_${Date.now()}`
-
-    await setDoc(doc(db, "tournaments", id), {
-      game: gameKey,
-      map,
-      type,
-      entryFee: Number(entryFee),
-      prize: Number(prize),
-      maxPlayers: Number(maxPlayers),
-      joinedCount: 0,
-      status: "open",
-      roomId: "",
-      roomPassword: "",
-      startTime: new Date(startTime),
-      createdAt: serverTimestamp(),
-      createdAtClient: Date.now()
-    })
-
-    setMap("")
-    setEntryFee("")
-    setPrize("")
-    setMaxPlayers("")
-    setStartTime("")
-  }
-
-  /* 🔑 ROOM SAVE */
-  const saveRoom = async () => {
-    if (!selectedTournament) return
-    await updateDoc(doc(db, "tournaments", selectedTournament.id), {
-      roomId,
-      roomPassword
-    })
-    alert("Room updated")
-  }
-
-  /* 💳 PAYMENT STATUS */
-  const updateStatus = async (uid, status) => {
-    if (!selectedTournament) return
-
-    const playerRef = doc(db, "tournamentPlayers", selectedTournament.id, "players", uid)
-    const tournamentRef = doc(db, "tournaments", selectedTournament.id)
-
-    const playerSnap = await getDoc(playerRef)
-    if (!playerSnap.exists()) return
-
-    const prevStatus = playerSnap.data().paymentStatus
-
-    await updateDoc(playerRef, {
-      paymentStatus: status,
-      ...(status === "rejected" && { lastRejectedAt: Date.now() })
-    })
-
-    if (status === "rejected" && prevStatus !== "rejected") {
-      await updateDoc(tournamentRef, {
-        joinedCount: Math.max((selectedTournament.joinedCount || 1) - 1, 0),
-        status: "open"
-      })
-    }
-  }
+  // ✅ ADDED SAFETY (does NOT remove anything)
+  const usersSafe = d.users || []
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-black text-white p-8">
+    <div className="min-h-screen bg-black text-white p-8">
 
-      {/* HEADER */}
-      <div className="sticky top-0 z-40 backdrop-blur-xl bg-black/60 border border-white/10 rounded-2xl p-6 mb-10 flex justify-between items-center">
-        <h1 className="font-orbitron text-4xl flex gap-3 items-center">
-          {gameId.toUpperCase()}
-          <span className="text-toxic">ADMIN OPS</span>
+      {/* ================= HEADER ================= */}
+      <div className="flex justify-between items-center mb-10">
+        <h1 className="text-3xl font-bold tracking-wide text-red-500">
+          {d.gameKey?.toUpperCase()} ADMIN PANEL
         </h1>
-      </div>
 
-      {/* CREATE TOURNAMENT */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-14">
-        <h2 className="font-orbitron mb-6 text-xl">CREATE TOURNAMENT</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-          {/* MAP SELECT */}
-          <div className="col-span-full">
-            <p className="text-sm text-gray-400 mb-3">SELECT MAP</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {MAPS[gameKey]?.map(m => (
-                <div
-                  key={m}
-                  onClick={() => setMap(m)}
-                  className={`relative cursor-pointer rounded-xl overflow-hidden border
-                    ${map === m ? "border-toxic" : "border-white/10 hover:border-toxic/50"}`}
-                >
-                  <img src={MAP_IMAGES[m]} alt={m} className="w-full h-28 object-cover" />
-                  <div className="absolute inset-0 bg-black/50 flex items-end p-2">
-                    <span className="text-sm font-semibold">{m}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* MODE SELECT */}
-          <div className="col-span-full flex gap-4">
-            {["SOLO", "DUO", "SQUAD"].map(t => (
-              <button
-                key={t}
-                onClick={() => setType(t)}
-                className={`px-6 py-3 rounded-xl border font-orbitron
-                  ${type === t ? "bg-toxic text-black" : "border-white/20"}`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {/* INPUTS */}
-          <input className="admin-input" placeholder="Entry Fee ₹" value={entryFee} onChange={e => setEntryFee(e.target.value)} />
-          <input className="admin-input" placeholder="Prize Pool ₹" value={prize} onChange={e => setPrize(e.target.value)} />
-          <input className="admin-input" placeholder="Max Players" value={maxPlayers} onChange={e => setMaxPlayers(e.target.value)} />
-          <input className="admin-input" type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)} />
-        </div>
-
-        <button onClick={createTournament} className="mt-8 bg-toxic px-12 py-3 rounded-xl text-black font-orbitron">
-          DEPLOY TOURNAMENT
+        <button
+          onClick={d.logout}
+          className="px-6 py-2 bg-red-500 rounded-lg text-black font-bold"
+        >
+          LOGOUT
         </button>
       </div>
 
-     {/* TOURNAMENTS */}
-      <h2 className="font-orbitron text-xl mb-4">LIVE TOURNAMENTS</h2>
+      {/* ================= STATS ================= */}
+      <div className="grid grid-cols-3 gap-6 mb-12">
+        <Stat title="Total Users" value={d.totalUsers} color="text-red-400" />
+        <Stat title="Total Matches" value={d.totalMatches} color="text-purple-400" />
+        <Stat title="Reviews" value={d.reviews} color="text-green-400" />
+      </div>
 
-      {tournaments.map(t => (
+      {/* ================= TABS ================= */}
+      <div className="flex gap-4 mb-12 flex-wrap">
+        {[
+          "MATCHES",
+          "USERS",
+          "TRANSACTIONS",
+          "BROADCAST",
+          "REVIEWS",
+          "ANALYTICS"
+        ].map(tab => (
+          <button
+            key={tab}
+            onClick={() => d.setActiveTab(tab)}
+            className={`px-6 py-2 rounded-xl font-semibold border transition
+              ${
+                d.activeTab === tab
+                  ? "bg-red-500 text-black border-red-500"
+                  : "border-white/20 text-white hover:border-red-500/40"
+              }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* ================= USERS ================= */}
+    {d.activeTab === "USERS" && (
+  <>
+    <h2 className="text-3xl font-bold mb-10 flex items-center gap-3">
+      👥 USER MANAGEMENT
+    </h2>
+
+    {usersSafe.length === 0 && (
+      <p className="text-gray-400 text-center">
+        No users found
+      </p>
+    )}
+
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {usersSafe.map(u => (
         <div
-          key={t.id}
-          onClick={() => {
-            setSelectedTournament(t)
-            setRoomId(t.roomId || "")
-            setRoomPassword(t.roomPassword || "")
-          }}
-          className={`p-5 mb-4 rounded-xl border cursor-pointer transition-all hover:scale-[1.02]
-          ${selectedTournament?.id === t.id
-              ? "border-toxic bg-toxic/10 shadow-[0_0_30px_rgba(0,255,150,0.15)]"
-              : "border-white/10 bg-white/5 hover:border-toxic/50"
-            }`}
+          key={u.id}
+          className="rounded-2xl border border-red-500/30 bg-black/60 p-6
+                     hover:border-red-500 transition-all"
         >
-          <div className="flex justify-between items-center">
-<p className="font-semibold flex items-center gap-2">
-  <span className="text-xl">
-    {MAP_ICONS[t.map] || "🎮"}
-  </span>
-  <span>{t.map}</span>
-  <span className="text-xs text-gray-400">• {t.type}</span>
-</p>
-            <span className="text-xs px-3 py-1 rounded-full bg-black/40 border border-white/10">
-              {t.joinedCount}/{t.maxPlayers}
-            </span>
-          </div>
-          <p className="text-xs text-gray-400 mt-1">Prize ₹{t.prize}</p>
+          <p className="text-2xl font-bold text-red-400 mb-2">
+            {u.name || "Unnamed User"}
+          </p>
+
+          {u.username && (
+            <p className="text-gray-300 mb-2">
+              @{u.username}
+            </p>
+          )}
+
+          <p className="text-sm text-gray-400 mb-1">
+            📧 {u.email}
+          </p>
+
+          {u.phone && (
+            <p className="text-sm text-gray-400 mb-1">
+              📱 {u.phone}
+            </p>
+          )}
+
+         
         </div>
       ))}
+    </div>
+  </>
+)}
 
-      {selectedTournament && (
+
+      {/* ================= MATCHES ================= */}
+      {d.activeTab === "MATCHES" && (
         <>
-<h2 className="font-orbitron text-xl mt-12 mb-4 flex items-center gap-3">
-  <span className="text-2xl">
-    {MAP_ICONS[selectedTournament.map] || "🎮"}
-  </span>
-  TOURNAMENT CONTROL — {selectedTournament.map}
-</h2>
+          <h2 className="text-2xl font-bold mb-6">
+            {d.isEditing ? "✏️ EDIT MATCH" : "➕ CREATE MATCH"}
+          </h2>
 
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-6">
-            <h3 className="font-orbitron mb-4">ROOM ACCESS</h3>
-            <input className="admin-input mb-3" value={roomId} placeholder="Room ID" onChange={e => setRoomId(e.target.value)} />
-            <input className="admin-input mb-4" value={roomPassword} placeholder="Room Password" onChange={e => setRoomPassword(e.target.value)} />
-            <button onClick={saveRoom} className="bg-toxic px-8 py-2 text-black rounded-lg hover:scale-105 transition">
-              LOCK ROOM
-            </button>
+          {/* ROW 1 */}
+          <div className="grid grid-cols-5 gap-6 mb-6">
+            <Select label="Match Type" value={d.matchType} onChange={d.setMatchType}
+              options={["Tournament", "Classic"]} />
+
+            <Input label="Match Name" value={d.matchName} onChange={d.setMatchName} />
+
+            <Select label="Game Mode" value={d.gameMode} onChange={d.setGameMode}
+              options={GAME_MODES} />
+
+            <Select label="Map" value={d.map} onChange={d.setMap}
+              options={MAPS_BY_GAME[d.gameKey] || []} />
+
+            <Input label="Entry Fee" value={d.entryFee} onChange={d.setEntryFee} />
           </div>
 
-          {players.map(p => (
-            <div key={p.id} className="bg-white/5 border border-white/10 rounded-xl p-6 mb-4">
-              <div className="flex flex-col md:flex-row gap-6">
-                <div className="flex-1">
-                  <p className="text-lg font-semibold">{p.ign}</p>
-                  <p className="text-xs text-gray-400">{p.email}</p>
-                  <p className="text-xs mt-1">UID: {p.bgmiUid}</p>
+          {/* ROW 2 */}
+          <div className="grid grid-cols-5 gap-6 mb-6">
+            <Input label="Prize Pool" value={d.prizePool} onChange={d.setPrizePool} />
+            <Input label="Total Slots" value={d.slots} onChange={d.setSlots} />
+            <Input label="Date" type="date" value={d.date} onChange={d.setDate} />
+            <Input label="Time" type="time" value={d.time} onChange={d.setTime} />
+            <Input label="Room ID" value={d.roomId} onChange={d.setRoomId} />
+          </div>
 
-                  <p className={`mt-3 font-bold ${
-                    p.paymentStatus === "approved" ? "text-green-400" :
-                    p.paymentStatus === "rejected" ? "text-red-400" : "text-yellow-400"
-                  }`}>
-                    {p.paymentStatus?.toUpperCase()}
+          <div className="max-w-md mb-10">
+            <Input label="Room Password" value={d.roomPassword} onChange={d.setRoomPassword} />
+          </div>
+
+          <button
+            onClick={d.isEditing ? d.updateMatch : d.createMatch}
+            className="w-full bg-red-500 py-4 rounded-xl text-black font-bold text-lg mb-16"
+          >
+            {d.isEditing ? "UPDATE MATCH" : "CREATE MATCH"}
+          </button>
+
+          {/* ================= ALL MATCHES ================= */}
+          <h2 className="text-2xl font-bold mb-6">ALL MATCHES</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {d.tournaments.map(t => {
+              const active = d.selectedTournament?.id === t.id
+
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => d.selectTournamentForEdit(t)}
+                  className={`cursor-pointer rounded-2xl p-5 border transition
+                    ${
+                      active
+                        ? "border-red-500 bg-red-500/10"
+                        : "border-white/10 bg-black/40 hover:border-red-500/40"
+                    }`}
+                >
+                  <div className="flex justify-between mb-2">
+                    <p className="font-semibold">{t.matchName}</p>
+                    <span className="text-xs px-3 py-1 bg-white/10 rounded-full">
+                      {t.status?.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <p className="text-sm text-gray-400">
+                    {t.map} • {t.gameMode}
                   </p>
 
-                  <div className="mt-4 flex gap-3">
-                    <button onClick={() => updateStatus(p.id, "approved")} className="btn-approve">
+                  <div className="flex justify-between mt-3 text-sm">
+                    <span>₹{t.prize}</span>
+                    <span>{t.joinedCount}/{t.maxPlayers}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* ================= PLAYERS ================= */}
+          {d.selectedTournament && (
+            <>
+              <h2 className="text-2xl font-bold mt-14 mb-6">
+                PLAYERS – {d.selectedTournament.matchName}
+              </h2>
+
+              {d.players.map(p => (
+                <div
+                  key={p.id}
+                  className="bg-black/50 border border-white/10 rounded-2xl p-6 mb-4"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold">{p.ign}</p>
+                      <p className="text-xs text-gray-400">{p.email}</p>
+                    </div>
+
+                    <span
+                      className={`px-4 py-1 rounded-full text-xs font-bold
+                        ${
+                          p.paymentStatus === "approved"
+                            ? "bg-green-500/20 text-green-400"
+                            : p.paymentStatus === "rejected"
+                            ? "bg-red-500/20 text-red-400"
+                            : "bg-yellow-500/20 text-yellow-400"
+                        }`}
+                    >
+                      {p.paymentStatus?.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-4 mt-4">
+                    <button
+                      onClick={() => d.updateStatus(p.id, "approved")}
+                      disabled={p.paymentStatus === "approved"}
+                      className="px-5 py-2 rounded-lg bg-green-500 text-black font-bold"
+                    >
                       APPROVE
                     </button>
-                    <button onClick={() => updateStatus(p.id, "rejected")} className="btn-reject">
+
+                    <button
+                      onClick={() => d.updateStatus(p.id, "rejected")}
+                      disabled={p.paymentStatus === "rejected"}
+                      className="px-5 py-2 rounded-lg bg-red-500 text-black font-bold"
+                    >
                       REJECT
                     </button>
                   </div>
+
+                  {p.paymentScreenshot && (
+                    <img
+                      src={p.paymentScreenshot}
+                      alt="Payment screenshot"
+                      className="mt-4 w-60 rounded-xl cursor-zoom-in hover:scale-105 transition"
+                      onClick={() => d.setZoomImage(p.paymentScreenshot)}
+                    />
+                  )}
                 </div>
-
-                {p.paymentScreenshot && (
-                  <img
-  src={p.paymentScreenshot}
-  alt="Player payment screenshot"
-  onClick={() => setZoomImage(p.paymentScreenshot)}
-  className="w-64 rounded-xl border border-white/20 cursor-zoom-in hover:scale-105 transition"
-/>
-
-                )}
-              </div>
-            </div>
-          ))}
+              ))}
+            </>
+          )}
         </>
       )}
+      {/* ================= BROADCAST ================= */}
+{d.activeTab === "BROADCAST" && (
+  <>
+    <h2 className="text-3xl font-bold mb-10 flex items-center gap-3">
+      📢 BROADCAST MESSAGE
+    </h2>
 
-      {zoomImage && (
-        <div onClick={() => setZoomImage(null)} className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
-<img
-  src={zoomImage}
-  alt="Zoomed payment screenshot"
-  className="max-w-[90%] max-h-[90%] rounded-2xl shadow-2xl"
+    <div className="max-w-2xl bg-black/60 border border-red-500/30 rounded-2xl p-8">
+      {/* TITLE */}
+      <div className="mb-6">
+        <label className="admin-label">Title</label>
+        <input
+          className="admin-input"
+          placeholder="Server Maintenance"
+          value={d.broadcastTitle}
+          onChange={e => d.setBroadcastTitle(e.target.value)}
+        />
+      </div>
+
+      {/* MESSAGE */}
+      <div className="mb-6">
+        <label className="admin-label">Message</label>
+        <textarea
+          className="admin-input min-h-[120px]"
+          placeholder="Servers will be down at 12 AM tonight"
+          value={d.broadcastMessage}
+          onChange={e => d.setBroadcastMessage(e.target.value)}
+        />
+      </div>
+
+      {/* TYPE */}
+      <div className="mb-8">
+        <label className="admin-label">Type</label>
+        <select
+          className="admin-input"
+          value={d.broadcastType}
+          onChange={e => d.setBroadcastType(e.target.value)}
+        >
+          <option value="info">Info</option>
+          <option value="success">Success</option>
+          <option value="warning">Warning</option>
+          <option value="error">Error</option>
+        </select>
+      </div>
+
+      {/* SEND BUTTON */}
+      <button
+        onClick={d.sendBroadcast}
+        className="w-full bg-red-500 py-4 rounded-xl text-black font-bold text-lg"
+      >
+        SEND BROADCAST
+      </button>
+    </div>
+  </>
+)}
+
+{d.activeTab === "TRANSACTIONS" && (
+  <>
+    {/* ================= PENDING WITHDRAWALS ================= */}
+    <h2 className="text-3xl font-bold mb-6 flex items-center gap-2">
+      💸 PENDING WITHDRAWALS
+    </h2>
+
+    {d.withdrawals.length === 0 ? (
+      <p className="text-gray-400 text-center mb-12">
+        No pending withdrawals
+      </p>
+    ) : (
+      <div className="space-y-6 mb-16">
+        {d.withdrawals.map(w => (
+          <div
+            key={w.id}
+            className="bg-black/60 border border-yellow-500/30
+                       rounded-2xl p-6 flex justify-between items-center"
+          >
+            <div>
+              <p className="text-lg font-bold text-yellow-400">
+                {w.name}
+              </p>
+              <p className="text-sm text-gray-400">
+                ₹{w.amount} • {w.upiId}
+              </p>
+              <p className="text-xs text-gray-500">
+                {new Date(w.requestedAt).toLocaleString()}
+              </p>
+            </div>
+
+            {/* ===== BUTTON STATUS MODE ===== */}
+            <div className="flex gap-3">
+              <button
+                onClick={() =>
+                  d.updateWithdrawStatus(w.id, "approved")
+                }
+                disabled={w.status === "approved"}
+                className={`px-5 py-2 rounded-lg font-bold transition
+                  ${
+                    w.status === "approved"
+                      ? "bg-green-500 text-black cursor-default"
+                      : "bg-green-500/30 text-green-400 hover:bg-green-500 hover:text-black"
+                  }
+                `}
+              >
+                {w.status === "approved" ? "ACCEPTED" : "APPROVE"}
+              </button>
+
+              <button
+                onClick={() =>
+                  d.updateWithdrawStatus(w.id, "rejected")
+                }
+                disabled={w.status === "rejected"}
+                className={`px-5 py-2 rounded-lg font-bold transition
+                  ${
+                    w.status === "rejected"
+                      ? "bg-red-500 text-black cursor-default"
+                      : "bg-red-500/30 text-red-400 hover:bg-red-500 hover:text-black"
+                  }
+                `}
+              >
+                {w.status === "rejected" ? "REJECTED" : "REJECT"}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* ================= ALL TRANSACTIONS ================= */}
+    <h2 className="text-3xl font-bold mb-6 flex items-center gap-2">
+      📊 ALL TRANSACTIONS
+    </h2>
+
+    {d.transactions.length === 0 ? (
+      <p className="text-gray-400 text-center">
+        No transactions found
+      </p>
+    ) : (
+      <div className="space-y-4">
+        {d.transactions.map(tx => (
+          <div
+            key={tx.id}
+            className="bg-black/60 border border-green-500/30
+                       rounded-2xl p-6 flex justify-between items-center"
+          >
+            <div>
+              <p className="font-semibold text-lg">
+                {tx.name}
+              </p>
+              <p className="text-sm text-gray-400">
+                {tx.type === "deposit"
+                  ? "Money Added"
+                  : "Withdrawal"}
+              </p>
+              <p className="text-xs text-gray-500">
+                {new Date(tx.time).toLocaleString()}
+              </p>
+            </div>
+
+            <div className="text-right">
+              <p
+                className={`text-xl font-bold ${
+                  tx.type === "deposit"
+                    ? "text-green-400"
+                    : "text-red-400"
+                }`}
+              >
+                {tx.type === "deposit" ? "+" : "-"}₹{tx.amount}
+              </p>
+
+              <p className="text-xs text-gray-400 uppercase">
+                {tx.status}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </>
+)}
+
+
+{d.activeTab === "ANALYTICS" && (
+  <>
+    {/* ================= PLATFORM ANALYTICS ================= */}
+    <h2 className="text-3xl font-bold mb-10 flex items-center gap-3">
+      📊 PLATFORM ANALYTICS
+    </h2>
+
+    {/* TOP CARDS */}
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-12">
+      <GradientCard
+        title="Total Users"
+        value={d.analytics.totalUsers}
+        sub="Registered Players"
+      />
+
+      <GradientCard
+        title="Total Matches"
+        value={d.analytics.totalMatches}
+        sub="Created Matches"
+      />
+
+      <GradientCard
+        title="Total Deposits"
+        value={`₹${d.analytics.totalDeposits}`}
+        sub="Money Added by Users"
+        valueClass="text-green-400"
+      />
+
+      <GradientCard
+  title="Total Withdrawals"
+  value={`₹${d.analytics.totalWithdrawals}`}
+  sub="Completed Payouts"
+  valueClass="text-red-400"
 />
+
+
+      <GradientCard
+        title="Total Prizes"
+        value={`₹${d.analytics.totalPrizes}`}
+        sub="Distributed to Winners"
+        valueClass="text-yellow-400"
+      />
+    </div>
+
+    {/* ================= FINANCIAL SUMMARY ================= */}
+    <div className="bg-black/40 rounded-2xl p-8 mb-12">
+      <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
+        💰 FINANCIAL SUMMARY
+      </h3>
+
+      <SummaryRow
+        label="Money In (Deposits)"
+        value={`+₹${d.analytics.totalDeposits}`}
+        color="green"
+      />
+
+      <SummaryRow
+  label="Money Out (Withdrawals)"
+  value={`-₹${d.analytics.totalWithdrawals}`}
+  color="red"
+/>
+
+
+      <SummaryRow
+        label="Prizes Distributed"
+        value={`-₹${d.analytics.totalPrizes}`}
+        color="yellow"
+      />
+
+      <div className="mt-6 border border-purple-500/40 rounded-xl p-5 flex justify-between">
+        <span className="font-semibold">Net Revenue</span>
+        <span className="font-bold text-red-400">
+          ₹{d.analytics.netRevenue}
+        </span>
+      </div>
+    </div>
+
+    {/* ================= QUICK STATS ================= */}
+    <div className="bg-black/40 rounded-2xl p-8">
+      <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
+        📈 QUICK STATS
+      </h3>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <QuickStat
+          title="Total Reviews"
+          value={d.reviews}
+        />
+        <QuickStat
+          title="Total Transactions"
+          value={d.analytics.totalTransactions}
+        />
+        <QuickStat
+          title="Active Matches"
+          value={d.tournaments.filter(t => t.status === "open").length}
+        />
+      </div>
+    </div>
+  </>
+)}
+
+
+
+
+      {/* ================= ZOOM ================= */}
+      {d.zoomImage && (
+        <div
+          onClick={() => d.setZoomImage(null)}
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
+        >
+          <img
+            src={d.zoomImage}
+            alt="Payment screenshot preview"
+            className="max-h-[90%] max-w-[90%] rounded-xl"
+          />
         </div>
       )}
     </div>
   )
 }
 
+
+/* ================= SMALL COMPONENTS ================= */
+
+function Stat({ title, value, color }) {
+  return (
+    <div className="bg-white/5 rounded-2xl p-6 text-center">
+      <p className="text-gray-400">{title}</p>
+      <p className={`text-4xl font-bold ${color}`}>{value}</p>
+    </div>
+  )
+}
+
+function Input({ label, value, onChange, type = "text" }) {
+  return (
+    <div>
+      <label className="admin-label">{label}</label>
+      <input
+        type={type}
+        className="admin-input"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      />
+    </div>
+  )
+}
+function GradientCard({ title, value, sub, valueClass = "text-white" }) {
+  return (
+    <div className="rounded-2xl p-6 bg-gradient-to-br from-pink-500/40 to-purple-600/60">
+      <p className="text-sm opacity-80">{title}</p>
+      <p className={`text-4xl font-bold mt-2 ${valueClass}`}>{value}</p>
+      <p className="text-xs opacity-70 mt-1">{sub}</p>
+    </div>
+  )
+}
+
+function SummaryRow({ label, value, color }) {
+  const colors = {
+    green: "border-green-500/50 text-green-400",
+    red: "border-red-500/50 text-red-400",
+    yellow: "border-yellow-500/50 text-yellow-400"
+  }
+
+  return (
+    <div className={`mb-4 p-4 border rounded-xl flex justify-between ${colors[color]}`}>
+      <span>{label}</span>
+      <span className="font-bold">{value}</span>
+    </div>
+  )
+}
+
+function QuickStat({ title, value }) {
+  return (
+    <div className="bg-black/60 rounded-xl p-6 text-center">
+      <p className="text-sm text-gray-400">{title}</p>
+      <p className="text-3xl font-bold text-red-400 mt-2">{value}</p>
+    </div>
+  )
+}
+
+function Select({ label, value, onChange, options }) {
+  return (
+    <div>
+      <label className="admin-label">{label}</label>
+      <select
+        className="admin-input"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      >
+        {options.map(o => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+    </div>
+  )
+}

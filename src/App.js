@@ -6,6 +6,8 @@ import AdminGameSelect  from "./pages/AdminGameSelect"
 import AdminGameDashboard  from "./pages/AdminGameDashboard"
 import Profile from "./pages/Profile"
 import FinishLogin from "./pages/FinishLogin"
+import Rules from "./pages/Rules"
+
 
 
 import LoadingScreen from "./components/LoadingScreen"
@@ -51,6 +53,7 @@ export default function App() {
 <Route path="/profile" element={<Profile />} />
 
 <Route path="/finish-login" element={<FinishLogin />} />
+<Route path="/rules" element={<Rules />} />
 
       </Routes>
     </BrowserRouter>
