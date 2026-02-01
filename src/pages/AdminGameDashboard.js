@@ -34,10 +34,10 @@ export default function AdminGameDashboard() {
   const usersSafe = d.users || []
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
+<div className="min-h-screen bg-black text-white page-container">
 
       {/* ================= HEADER ================= */}
-      <div className="flex justify-between items-center mb-10">
+<div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-10">
         <h1 className="text-3xl font-bold tracking-wide text-red-500">
           {d.gameKey?.toUpperCase()} ADMIN PANEL
         </h1>
@@ -51,14 +51,14 @@ export default function AdminGameDashboard() {
       </div>
 
       {/* ================= STATS ================= */}
-      <div className="grid grid-cols-3 gap-6 mb-12">
+<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-12">
         <Stat title="Total Users" value={d.totalUsers} color="text-red-400" />
         <Stat title="Total Matches" value={d.totalMatches} color="text-purple-400" />
         <Stat title="Reviews" value={d.reviews} color="text-green-400" />
       </div>
 
       {/* ================= TABS ================= */}
-      <div className="flex gap-4 mb-12 flex-wrap">
+<div className="flex gap-3 mb-8 overflow-x-auto no-scrollbar">
         {[
           "MATCHES",
           "USERS",
@@ -138,7 +138,7 @@ export default function AdminGameDashboard() {
           </h2>
 
           {/* ROW 1 */}
-          <div className="grid grid-cols-5 gap-6 mb-6">
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 md:gap-8">
             <Select label="Match Type" value={d.matchType} onChange={d.setMatchType}
               options={["Tournament", "Classic"]} />
 
@@ -154,7 +154,7 @@ export default function AdminGameDashboard() {
           </div>
 
           {/* ROW 2 */}
-          <div className="grid grid-cols-5 gap-6 mb-6">
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 md:gap-8">
             <Input label="Prize Pool" value={d.prizePool} onChange={d.setPrizePool} />
             <Input label="Total Slots" value={d.slots} onChange={d.setSlots} />
             <Input label="Date" type="date" value={d.date} onChange={d.setDate} />
@@ -243,7 +243,7 @@ export default function AdminGameDashboard() {
                     </span>
                   </div>
 
-                  <div className="flex gap-4 mt-4">
+<div className="flex flex-col sm:flex-row gap-4 mt-4">
                     <button
                       onClick={() => d.updateStatus(p.id, "approved")}
                       disabled={p.paymentStatus === "approved"}
@@ -348,7 +348,11 @@ export default function AdminGameDashboard() {
           <div
             key={w.id}
             className="bg-black/60 border border-yellow-500/30
-                       rounded-2xl p-6 flex justify-between items-center"
+           rounded-2xl p-4 md:p-6
+           flex flex-col md:flex-row
+           md:justify-between md:items-center
+           gap-4"
+
           >
             <div>
               <p className="text-lg font-bold text-yellow-400">
@@ -415,8 +419,12 @@ export default function AdminGameDashboard() {
         {d.transactions.map(tx => (
           <div
             key={tx.id}
-            className="bg-black/60 border border-green-500/30
-                       rounded-2xl p-6 flex justify-between items-center"
+            className="bg-black/60 border border-yellow-500/30
+           rounded-2xl p-4 md:p-6
+           flex flex-col md:flex-row
+           md:justify-between md:items-center
+           gap-4"
+
           >
             <div>
               <p className="font-semibold text-lg">
@@ -463,7 +471,7 @@ export default function AdminGameDashboard() {
     </h2>
 
     {/* TOP CARDS */}
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-12">
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
       <GradientCard
         title="Total Users"
         value={d.analytics.totalUsers}

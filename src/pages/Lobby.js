@@ -69,7 +69,7 @@ const [showNotifications, setShowNotifications] = useState(false)
       className="min-h-screen bg-black text-white"
     >
       {/* ================= TOP BAR ================= */}
-      <div className="px-10 py-6 border-b border-red-500 flex justify-between items-center">
+<div className="px-10 py-6 border-b border-red-500 top-bar">
         <h1 className="text-2xl font-heading font-bold text-red-500 tracking-widest">
           TOXICRUSH
         </h1>
@@ -143,7 +143,7 @@ const [showNotifications, setShowNotifications] = useState(false)
       </div>
 
       {/* ================= CONTENT ================= */}
-      <div className="px-10 py-8 space-y-10">
+<div className="page space-y-10">
         {/* WELCOME */}
         <p className="text-lg">
           Welcome,{" "}
@@ -160,7 +160,7 @@ const [showNotifications, setShowNotifications] = useState(false)
         </p>
 
         {/* TABS */}
-        <div className="flex gap-4">
+<div className="tabs">
           {[
             { name: "BGMI", icon: "🎮" },
             { name: "LEADERBOARD", icon: "🏆" },
@@ -263,7 +263,7 @@ const [showNotifications, setShowNotifications] = useState(false)
         {activeTab === "BGMI" && (
           <>
             {/* REGISTERED MATCHES */}
-            <div className="bg-white/5 rounded-3xl p-10">
+<div className="bg-white/5 card section">
               <h2 className="text-2xl font-heading font-semibold mb-6">
                 🎮 MY REGISTERED MATCHES
               </h2>
