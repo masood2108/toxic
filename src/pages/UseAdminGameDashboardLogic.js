@@ -91,7 +91,8 @@ const [transactions, setTransactions] = useState([])
 const updateWithdrawStatus = async (id, status) => {
   await updateDoc(doc(db, "withdrawals", id), {
     status,
-    processedAt: Date.now()
+    processedAt: Date.now(),
+    processedBy: auth.currentUser.email
   })
 }
   /* ================= ANALYTICS ================= */
