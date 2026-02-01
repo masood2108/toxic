@@ -26,6 +26,38 @@ const MAPS = {
   freefire: ["Bermuda", "Bermuda Remastered", "Purgatory", "Kalahari", "Alpine", "NeXTerra"]
 }
 
+/* 🆕 MAP ICONS */
+const MAP_ICONS = {
+  Erangel: "🌍",
+  Miramar: "🏜️",
+  Sanhok: "🌴",
+  Vikendi: "❄️",
+  Livik: "⚡",
+  Nusa: "🏝️",
+  Bermuda: "🌊",
+  "Bermuda Remastered": "🔥",
+  Purgatory: "☠️",
+  Kalahari: "🏜️",
+  Alpine: "🏔️",
+  NeXTerra: "🚀"
+}
+
+/* 🆕 MAP IMAGES (USED IN CREATE UI) */
+const MAP_IMAGES = {
+  Erangel: "https://wallpapers.com/images/high/pubg-season-3-erangel-new-map-bel56ctm7szmed63.webp",
+  Miramar: "https://wallpapers.com/images/high/playerunknowns-battlegrounds-4k-fr44xgm1ts02ab4m.webpg",
+  Sanhok: "https://wallpapers.com/images/high/pubg-season-3-welcome-to-sanhok-7hb85ror77gq7cl2.webp",
+  Vikendi: "https://wallpapers.com/images/high/pubg-1440p-vikendi-drop-ziatf2qem16sw87b.webp",
+  Livik: "https://imgs.search.brave.com/eSAgjyBD8xICsJbjpzvBEuX0q_GBnbIPhLpdNixHx4k/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly93YWxs/cGFwZXJjYXZlLmNv/bS93cC93cDY5MDIz/OTcuanBn",
+  Nusa: "https://imgs.search.brave.com/OA8Q4gZcBagqiWDI9h7JEpvYdWLg1MtWsn7cQlf7n-A/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9zdGF0/aWNnLnNwb3J0c2tl/ZWRhLmNvbS9lZGl0/b3IvMjAyMy8wNi84/ODE0NS0xNjg3Mjcw/MDIyMDI5OC0xOTIw/LmpwZw",
+  Bermuda: "https://imgs.search.brave.com/PmvRTkzr7Zzt0BJlL5BxNvQIFm8tf0jgETyUVaZ_pM4/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9zdGF0/aWNnLnNwb3J0c2tl/ZWRhLmNvbS9lZGl0/b3IvMjAyMC8wOS83/MjJmNi0xNjAxMTc1/NjUwMjYyMy04MDAu/anBn",
+  "Bermuda Remastered": "http://imgs.search.brave.com/jH-3xQIBzaM99d9r8SAF3SYmQGaURpEAYQUYiu_xo64/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9zdGF0/aWMuZGlnaXQuaW4v/ZGVmYXVsdC8zYTNi/NTk2MDQyZWRiOTIy/M2VjYTk1Y2ZjYTM3/NWVmNWNlY2MxNjA2/LmpwZWc",
+  Purgatory: "https://imgs.search.brave.com/Mi6MJyK7ppDbaBSjEQ1HPkXIEa84Rv75WRUIQMn5USg/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93YWxs/cGFwZXJhY2Nlc3Mu/Y29tL2Z1bGwvOTUz/MjEzNS5qcGc",
+  Kalahari: "https://imgs.search.brave.com/SsQfQ3aNleBkdjM-01R6jTxEnPOByE0bcJqioE7zIuk/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93YWxs/cGFwZXJhY2Nlc3Mu/Y29tL2Z1bGwvOTUz/MjE1Mi5qcGc",
+  Alpine: "https://imgs.search.brave.com/nRf0-UkiPVE1atIBhzRJdMAjEErcn9msaFSFHRj1M8M/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzgyLzY5/LzA4LzgyNjkwOGVk/MmE1OGFkZDVmN2Ux/MzU5OThjNTk2NjQ0/LmpwZw",
+  NeXTerra: "https://imgs.search.brave.com/O3iVlo90er6ssZV534mqehjeCUX6TnWCt1C-ABCrVcc/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9zdGF0/aWNnLnNwb3J0c2tl/ZWRhLmNvbS9lZGl0/b3IvMjAyMi8wOC84/NThjMC0xNjYxMDI1/MDkyMDk2Mi0xOTIw/LmpwZw"
+}
+
 export default function AdminGameDashboard() {
   const { gameId } = useParams()
   const navigate = useNavigate()
@@ -45,38 +77,24 @@ export default function AdminGameDashboard() {
 
   const [roomId, setRoomId] = useState("")
   const [roomPassword, setRoomPassword] = useState("")
-/* 🆕 MAP ICONS */
-const MAP_ICONS = {
-  Erangel: "🌍",
-  Miramar: "🏜️",
-  Sanhok: "🌴",
-  Vikendi: "❄️",
-  Livik: "⚡",
-  Nusa: "🏝️",
 
-  Bermuda: "🌊",
-  "Bermuda Remastered": "🔥",
-  Purgatory: "☠️",
-  Kalahari: "🏜️",
-  Alpine: "🏔️",
-  NeXTerra: "🚀"
-}
-
+  /* 🔐 AUTH */
   useEffect(() => {
     if (!auth.currentUser || !ADMIN_EMAILS.includes(auth.currentUser.email)) {
       navigate("/")
     }
   }, [navigate])
-useEffect(() => {
-  if (selectedTournament) {
-    document.title = `Room Ops • ${selectedTournament.map} | ToxicRush`
-  } else {
-    document.title = `ToxicRush Admin • ${gameId.toUpperCase()}`
-  }
-}, [gameId, selectedTournament])
 
+  /* 🏷️ TITLE */
+  useEffect(() => {
+    if (selectedTournament) {
+      document.title = `Room Ops • ${selectedTournament.map} | ToxicRush`
+    } else {
+      document.title = `ToxicRush Admin • ${gameId.toUpperCase()}`
+    }
+  }, [gameId, selectedTournament])
 
-
+  /* 📡 FETCH TOURNAMENTS */
   useEffect(() => {
     const q = query(
       collection(db, "tournaments"),
@@ -88,6 +106,7 @@ useEffect(() => {
     })
   }, [gameKey])
 
+  /* 👥 FETCH PLAYERS */
   useEffect(() => {
     if (!selectedTournament) {
       setPlayers([])
@@ -101,6 +120,7 @@ useEffect(() => {
     )
   }, [selectedTournament])
 
+  /* 🚀 CREATE TOURNAMENT */
   const createTournament = async () => {
     if (!map || !entryFee || !prize || !maxPlayers || !startTime) {
       alert("Fill all fields")
@@ -132,6 +152,7 @@ useEffect(() => {
     setStartTime("")
   }
 
+  /* 🔑 ROOM SAVE */
   const saveRoom = async () => {
     if (!selectedTournament) return
     await updateDoc(doc(db, "tournaments", selectedTournament.id), {
@@ -141,6 +162,7 @@ useEffect(() => {
     alert("Room updated")
   }
 
+  /* 💳 PAYMENT STATUS */
   const updateStatus = async (uid, status) => {
     if (!selectedTournament) return
 
@@ -174,42 +196,61 @@ useEffect(() => {
           {gameId.toUpperCase()}
           <span className="text-toxic">ADMIN OPS</span>
         </h1>
-        <div className="text-xs text-gray-400">
-          Live Control Panel • ToxicRush
-        </div>
       </div>
 
-      {/* CREATE */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-14 shadow-[0_0_80px_rgba(0,255,150,0.08)]">
+      {/* CREATE TOURNAMENT */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-14">
         <h2 className="font-orbitron mb-6 text-xl">CREATE TOURNAMENT</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <select className="admin-input" value={map} onChange={e => setMap(e.target.value)}>
-            <option value="">Select Map</option>
-            {MAPS[gameKey]?.map(m => <option key={m}>{m}</option>)}
-          </select>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-          <select className="admin-input" value={type} onChange={e => setType(e.target.value)}>
-            <option>SOLO</option>
-            <option>DUO</option>
-            <option>SQUAD</option>
-          </select>
+          {/* MAP SELECT */}
+          <div className="col-span-full">
+            <p className="text-sm text-gray-400 mb-3">SELECT MAP</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {MAPS[gameKey]?.map(m => (
+                <div
+                  key={m}
+                  onClick={() => setMap(m)}
+                  className={`relative cursor-pointer rounded-xl overflow-hidden border
+                    ${map === m ? "border-toxic" : "border-white/10 hover:border-toxic/50"}`}
+                >
+                  <img src={MAP_IMAGES[m]} alt={m} className="w-full h-28 object-cover" />
+                  <div className="absolute inset-0 bg-black/50 flex items-end p-2">
+                    <span className="text-sm font-semibold">{m}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
+          {/* MODE SELECT */}
+          <div className="col-span-full flex gap-4">
+            {["SOLO", "DUO", "SQUAD"].map(t => (
+              <button
+                key={t}
+                onClick={() => setType(t)}
+                className={`px-6 py-3 rounded-xl border font-orbitron
+                  ${type === t ? "bg-toxic text-black" : "border-white/20"}`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          {/* INPUTS */}
           <input className="admin-input" placeholder="Entry Fee ₹" value={entryFee} onChange={e => setEntryFee(e.target.value)} />
           <input className="admin-input" placeholder="Prize Pool ₹" value={prize} onChange={e => setPrize(e.target.value)} />
           <input className="admin-input" placeholder="Max Players" value={maxPlayers} onChange={e => setMaxPlayers(e.target.value)} />
           <input className="admin-input" type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)} />
         </div>
 
-        <button
-          onClick={createTournament}
-          className="mt-8 bg-toxic px-12 py-3 rounded-xl text-black font-orbitron hover:scale-105 hover:shadow-[0_0_30px_#00ff99] transition"
-        >
+        <button onClick={createTournament} className="mt-8 bg-toxic px-12 py-3 rounded-xl text-black font-orbitron">
           DEPLOY TOURNAMENT
         </button>
       </div>
 
-      {/* TOURNAMENTS */}
+     {/* TOURNAMENTS */}
       <h2 className="font-orbitron text-xl mb-4">LIVE TOURNAMENTS</h2>
 
       {tournaments.map(t => (
@@ -312,3 +353,4 @@ useEffect(() => {
     </div>
   )
 }
+
