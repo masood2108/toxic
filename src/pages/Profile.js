@@ -10,10 +10,19 @@ import {
 } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
 import AISupportChat from "../components/AISupportChat"
+import { query, where } from "firebase/firestore"
 
 export default function Profile() {
 
-  const user = auth.currentUser
+const [user, setUser] = useState(null)
+
+useEffect(() => {
+  const unsub = auth.onAuthStateChanged(u => {
+    setUser(u)
+  })
+  return () => unsub()
+}, [])
+  
   const navigate = useNavigate()
 
   /* ================= WITHDRAW STATE ================= */
@@ -69,51 +78,64 @@ export default function Profile() {
   }, [data])
 
   /* ================= REALTIME PROFILE ================= */
-  useEffect(() => {
-    if (!user) return
+useEffect(() => {
+  if (!user) return
 
-    return onSnapshot(doc(db, "users", user.uid), snap => {
-      const d = snap.data()
-      if (!d) return
+  const ref = doc(db, "users", user.uid)
 
-      setData(d)
-      setForm({
-        name: d.name || "",
-        whatsapp: d.whatsapp || "",
-        bgmiUid: d.bgmiUid || "",
-        freeFireUid: d.freeFireUid || ""
+  const unsub = onSnapshot(ref, async snap => {
+    // 🔥 USER DOC DOES NOT EXIST → CREATE IT
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        name: user.displayName || "New User",
+        email: user.email,
+        whatsapp: "",
+        bgmiUid: "",
+        freeFireUid: "",
+        role: "user",
+        createdAt: Date.now()
       })
+      return
+    }
+
+    const d = snap.data()
+
+    setData(d)
+    setForm({
+      name: d.name || "",
+      whatsapp: d.whatsapp || "",
+      bgmiUid: d.bgmiUid || "",
+      freeFireUid: d.freeFireUid || ""
     })
-  }, [user])
+  })
+
+  return () => unsub()
+}, [user])
+
 
   /* ================= WITHDRAW STATUS ================= */
-  useEffect(() => {
-    if (!user) return
+  /* ================= WITHDRAW STATUS + HISTORY ================= */
+useEffect(() => {
+  if (!user) return
 
-    return onSnapshot(collection(db, "withdrawals"), snap => {
-      const pending = snap.docs
-        .map(d => d.data())
-        .find(d => d.userId === user.uid && d.status === "pending")
+  const q = query(
+    collection(db, "withdrawals"),
+    where("userId", "==", user.uid)
+  )
 
-      setWithdrawStatus(pending || null)
-    })
-  }, [user])
+  const unsub = onSnapshot(q, snap => {
+    const history = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => b.requestedAt - a.requestedAt)
 
-  /* ================= WITHDRAW HISTORY ================= */
-  useEffect(() => {
-    if (!user) return
+    setWithdrawHistory(history)
 
-    const unsub = onSnapshot(collection(db, "withdrawals"), snap => {
-      const history = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(w => w.userId === user.uid)
-        .sort((a, b) => b.requestedAt - a.requestedAt)
+    const pending = history.find(w => w.status === "pending")
+    setWithdrawStatus(pending || null)
+  })
 
-      setWithdrawHistory(history)
-    })
-
-    return () => unsub()
-  }, [user])
+  return () => unsub()
+}, [user])
 
   /* ================= MATCH HISTORY ================= */
   useEffect(() => {
@@ -144,12 +166,23 @@ export default function Profile() {
   }, [user])
 
   /* ================= SAVE PROFILE ================= */
-  const saveProfile = async () => {
-    await updateDoc(doc(db, "users", user.uid), form)
-    setEditing(false)
-  }
+  /* ================= SAVE PROFILE ================= */
+const saveProfile = async () => {
+  await updateDoc(doc(db, "users", user.uid), form)
+  setEditing(false)
+}
 
-  if (!data) return null
+/* ✅ ADD THIS HERE */
+if (!user) {
+  return (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      Loading profile...
+    </div>
+  )
+}
+
+if (!data) return null
+
 
   return (
     <div className="min-h-screen bg-black text-white px-6 pb-24">

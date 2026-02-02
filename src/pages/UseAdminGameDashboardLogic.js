@@ -88,6 +88,7 @@ const [withdrawHistory, setWithdrawHistory] = useState([])
   const [broadcastMessage, setBroadcastMessage] = useState("")
   const [broadcastType, setBroadcastType] = useState("info")
 const [transactions, setTransactions] = useState([])
+
 const updateWithdrawStatus = async (id, status) => {
   await updateDoc(doc(db, "withdrawals", id), {
     status,
