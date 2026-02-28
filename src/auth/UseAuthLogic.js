@@ -120,14 +120,9 @@ export default function useAuthLogic() {
 
     setOtpSent(true)
     success("OTP sent to your email. Check inbox 📩")
-  } catch (err) {
-  console.error("SEND OTP ERROR:", err)
-  return res.status(500).json({
-    success: false,
-    message: err.message,
-    stack: err.stack
-  })
-}
+  } catch (e) {
+    error(e.message || "Failed to send OTP.")
+  }
 
   setLoading(false)
 }
