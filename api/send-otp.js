@@ -37,8 +37,10 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true })
 
-  } catch (err) {
-    console.error("SEND OTP ERROR", err)
-    return res.status(500).json({ success: false })
-  }
+  }catch (err) {
+  console.error("SEND OTP ERROR:", err)
+  return res.status(500).json({
+    success: false,
+    message: err.message
+  })
 }
