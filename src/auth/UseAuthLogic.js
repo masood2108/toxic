@@ -93,34 +93,39 @@ export default function useAuthLogic() {
   }
 
   /* ================= SEND OTP ================= */
-  const sendEmailOtp = async () => {
-    if (!email) {
-      error("Please enter your email address first.")
-      return
-    }
-
-    setLoading(true)
-    try {
-      const res = await fetch("/api/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
-      })
-
-      const data = await res.json()
-      if (!data.success) throw new Error(data.message)
-
-      setOtpSent(true)
-      success("OTP sent to your email. Check inbox & spam 📩")
-    } catch (e) {
-      error(
-        e.message ||
-          "Failed to send OTP. Please wait and try again."
-      )
-    }
-    setLoading(false)
+ const sendEmailOtp = async () => {
+  if (!email) {
+    error("Please enter your email address first.")
+    return
   }
 
+  setLoading(true)
+  try {
+    const res = await fetch("/api/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    })
+
+    const text = await res.text()
+
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch {
+      throw new Error(text || "Server error")
+    }
+
+    if (!data.success) throw new Error(data.message)
+
+    setOtpSent(true)
+    success("OTP sent to your email. Check inbox 📩")
+  } catch (e) {
+    error(e.message || "Failed to send OTP.")
+  }
+
+  setLoading(false)
+}
   /* ================= VERIFY OTP ================= */
   const verifyEmailOtp = async () => {
     if (!otp) {
