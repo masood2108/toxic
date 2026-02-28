@@ -81,17 +81,34 @@ export default function Games() {
       />
 
       {/* TOP BAR */}
-      <div className="absolute top-0 left-0 w-full z-30 flex justify-between items-center px-6 md:px-10 py-6">
-        <h1 className="font-orbitron tracking-[0.4em] text-lg">
-          TOXIC<span style={{ color: game.accent }}>RUSH</span>
-        </h1>
-        <button
-          onClick={logout}
-          className="text-xs tracking-widest opacity-70 hover:opacity-100 transition"
-        >
-          LOGOUT
-        </button>
-      </div>
+     {/* TOP BAR */}
+<div className="absolute top-0 left-0 w-full z-30 flex justify-between items-center px-6 md:px-10 py-6">
+  <h1 className="font-orbitron tracking-[0.4em] text-lg">
+    TOXIC<span style={{ color: game.accent }}>RUSH</span>
+  </h1>
+
+  <div className="flex items-center gap-6">
+
+    {/* PROFILE BUTTON */}
+    <button
+      onClick={() => navigate("/profile")}
+      className="flex items-center gap-2 text-xs tracking-widest 
+                 border border-white/20 px-4 py-2 rounded-full
+                 hover:border-white hover:bg-white/10 transition"
+    >
+      👤 PROFILE
+    </button>
+
+    {/* LOGOUT */}
+    <button
+      onClick={logout}
+      className="text-xs tracking-widest opacity-70 hover:opacity-100 transition"
+    >
+      LOGOUT
+    </button>
+
+  </div>
+</div>
 
       {/* BACKGROUND IMAGE */}
       <AnimatePresence mode="wait">
