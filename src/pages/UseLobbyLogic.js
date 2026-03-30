@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { auth, db } from "../firebase"
 import {
@@ -49,6 +49,14 @@ export default function useLobbyLogic() {
   /* 🆕 ROOM DETAILS (ADDED – NOTHING REMOVED) */
   const [roomId, setRoomId] = useState("")
   const [roomPassword, setRoomPassword] = useState("")
+  const prevRoomId = useRef("")
+
+  /* ================= REQUEST PERMISSION FOR NOTIFICATIONS ================= */
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission()
+    }
+  }, [])
 
   /* ================= FETCH TOURNAMENTS ================= */
   useEffect(() => {
@@ -67,6 +75,41 @@ export default function useLobbyLogic() {
 
     return () => unsub()
   }, [gameId])
+
+  /* ================= LEADERBOARD LOGIC ================= */
+  const [leaderboard, setLeaderboard] = useState([])
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "withdrawals"), snap => {
+      const userEarnings = {}
+
+      snap.docs.forEach(d => {
+        const w = d.data()
+        if (w.status === "approved") {
+          const uid = w.userId
+          if (uid) {
+            if (!userEarnings[uid]) {
+              userEarnings[uid] = {
+                userId: uid,
+                name: w.name || "Unknown Player",
+                email: w.email || "",
+                earnings: 0
+              }
+            }
+            userEarnings[uid].earnings += Number(w.amount || 0)
+          }
+        }
+      })
+
+      const sorted = Object.values(userEarnings)
+        .sort((a, b) => b.earnings - a.earnings)
+        .slice(0, 50) // Get top 50 
+
+      setLeaderboard(sorted)
+    })
+
+    return () => unsub()
+  }, [])
 
   /* ================= AUTO DETECT JOINED MATCH (STEP 1) ================= */
   useEffect(() => {
@@ -166,8 +209,30 @@ export default function useLobbyLogic() {
     const unsub = onSnapshot(ref, snap => {
       if (!snap.exists()) return
       const data = snap.data()
-      setRoomId(data.roomId || "")
-      setRoomPassword(data.roomPassword || "")
+
+      const newRoomId = data.roomId || ""
+      const newRoomPassword = data.roomPassword || ""
+
+      // Trigger Alert & Notification when Room ID is revealed for the first time
+      if (newRoomId && !prevRoomId.current && newRoomId !== prevRoomId.current) {
+        try {
+          const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
+          audio.play().catch(e => console.log("Audio play blocked:", e))
+
+          if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("🎮 Match Room Details Revealed!", {
+              body: `Ready up! Room ID: ${newRoomId}\nPassword: ${newRoomPassword}`,
+              icon: "/favicon.ico"
+            })
+          }
+        } catch (err) {
+          console.error("Alert error:", err)
+        }
+      }
+
+      prevRoomId.current = newRoomId
+      setRoomId(newRoomId)
+      setRoomPassword(newRoomPassword)
     })
 
     return () => unsub()
@@ -318,6 +383,7 @@ export default function useLobbyLogic() {
     bgmiUid,
     setBgmiUid,
 
-    confirmJoin
+    confirmJoin,
+    leaderboard
   }
 }

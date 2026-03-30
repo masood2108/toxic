@@ -41,7 +41,8 @@ export default function Lobby() {
     bgmiUid,
     setBgmiUid,
 
-    confirmJoin
+    confirmJoin,
+    leaderboard
   } = useLobbyLogic()
 
 
@@ -254,8 +255,43 @@ export default function Lobby() {
 
         {/* ================= LEADERBOARD ================= */}
         {activeTab === "LEADERBOARD" && (
-          <div className="bg-white/5 rounded-3xl p-10 text-center text-gray-400">
-            🏆 Leaderboard coming soon
+          <div className="bg-white/5 rounded-3xl p-6 sm:p-10 text-white shadow-xl">
+            <h2 className="text-2xl font-heading font-bold mb-8 text-yellow-500 flex items-center gap-3">
+              🏆 TOP EARNERS
+            </h2>
+
+            {leaderboard.length === 0 ? (
+              <p className="text-gray-400 text-center py-12">No earnings recorded yet. Play and win to get on the board!</p>
+            ) : (
+              <div className="space-y-4">
+                {leaderboard.map((player, index) => (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    key={player.userId}
+                    className="flex items-center justify-between p-4 bg-black/60 border border-white/10 rounded-2xl hover:bg-black/80 transition"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className={`font-black text-xl w-8 text-center ${index === 0 ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' : index === 1 ? 'text-gray-300 drop-shadow-[0_0_8px_rgba(209,213,219,0.8)]' : index === 2 ? 'text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.8)]' : 'text-gray-500'}`}>
+                        #{index + 1}
+                      </span>
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-inner ${index === 0 ? 'bg-yellow-500/20 shadow-yellow-500/50' : index === 1 ? 'bg-gray-300/20 shadow-gray-300/50' : index === 2 ? 'bg-amber-600/20 shadow-amber-600/50' : 'bg-white/5'}`}>
+                        {index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : '👤'}
+                      </div>
+                      <div>
+                        <p className="font-bold text-lg">{player.name}</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">{player.email.replace(/(.{2})(.*)(?=@)/, "$1***")}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black text-xl text-green-400 tracking-wide">₹{player.earnings}</p>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mt-1">Total Won</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -426,7 +462,7 @@ export default function Lobby() {
                   </p>
 
                   <img
-                    src="/qr.png"
+                    src="/qr.jpeg"
                     alt="Payment QR"
                     className="w-40 h-40 object-contain"
                   />
