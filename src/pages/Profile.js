@@ -14,15 +14,15 @@ import { query, where } from "firebase/firestore"
 
 export default function Profile() {
 
-const [user, setUser] = useState(null)
+  const [user, setUser] = useState(null)
 
-useEffect(() => {
-  const unsub = auth.onAuthStateChanged(u => {
-    setUser(u)
-  })
-  return () => unsub()
-}, [])
-  
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged(u => {
+      setUser(u)
+    })
+    return () => unsub()
+  }, [])
+
   const navigate = useNavigate()
 
   /* ================= WITHDRAW STATE ================= */
@@ -78,64 +78,64 @@ useEffect(() => {
   }, [data])
 
   /* ================= REALTIME PROFILE ================= */
-useEffect(() => {
-  if (!user) return
+  useEffect(() => {
+    if (!user) return
 
-  const ref = doc(db, "users", user.uid)
+    const ref = doc(db, "users", user.uid)
 
-  const unsub = onSnapshot(ref, async snap => {
-    // 🔥 USER DOC DOES NOT EXIST → CREATE IT
-    if (!snap.exists()) {
-      await setDoc(ref, {
-        name: user.displayName || "New User",
-        email: user.email,
-        whatsapp: "",
-        bgmiUid: "",
-        freeFireUid: "",
-        role: "user",
-        createdAt: Date.now()
+    const unsub = onSnapshot(ref, async snap => {
+      // 🔥 USER DOC DOES NOT EXIST → CREATE IT
+      if (!snap.exists()) {
+        await setDoc(ref, {
+          name: user.displayName || "New User",
+          email: user.email,
+          whatsapp: "",
+          bgmiUid: "",
+          freeFireUid: "",
+          role: "user",
+          createdAt: Date.now()
+        })
+        return
+      }
+
+      const d = snap.data()
+
+      setData(d)
+      setForm({
+        name: d.name || "",
+        whatsapp: d.whatsapp || "",
+        bgmiUid: d.bgmiUid || "",
+        freeFireUid: d.freeFireUid || ""
       })
-      return
-    }
-
-    const d = snap.data()
-
-    setData(d)
-    setForm({
-      name: d.name || "",
-      whatsapp: d.whatsapp || "",
-      bgmiUid: d.bgmiUid || "",
-      freeFireUid: d.freeFireUid || ""
     })
-  })
 
-  return () => unsub()
-}, [user])
+    return () => unsub()
+  }, [user])
 
 
   /* ================= WITHDRAW STATUS ================= */
   /* ================= WITHDRAW STATUS + HISTORY ================= */
-useEffect(() => {
-  if (!user) return
+  useEffect(() => {
+    if (!user) return
 
-  const q = query(
-    collection(db, "withdrawals"),
-    where("userId", "==", user.uid)
-  )
+    const q = query(
+      collection(db, "withdrawals"),
+      where("userId", "==", user.uid)
+    )
 
-  const unsub = onSnapshot(q, snap => {
-    const history = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => b.requestedAt - a.requestedAt)
+    const unsub = onSnapshot(q, snap => {
+      const history = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => b.requestedAt - a.requestedAt)
 
-    setWithdrawHistory(history)
+      setWithdrawHistory(history)
 
-    const pending = history.find(w => w.status === "pending")
-    setWithdrawStatus(pending || null)
-  })
+      const pending = history.find(w => w.status === "pending")
+      setWithdrawStatus(pending || null)
+    })
 
-  return () => unsub()
-}, [user])
+    return () => unsub()
+  }, [user])
 
   /* ================= MATCH HISTORY ================= */
   useEffect(() => {
@@ -167,29 +167,29 @@ useEffect(() => {
 
   /* ================= SAVE PROFILE ================= */
   /* ================= SAVE PROFILE ================= */
-const saveProfile = async () => {
-  await updateDoc(doc(db, "users", user.uid), form)
-  setEditing(false)
-}
+  const saveProfile = async () => {
+    await updateDoc(doc(db, "users", user.uid), form)
+    setEditing(false)
+  }
 
-/* ✅ ADD THIS HERE */
-if (!user) {
+  /* ✅ ADD THIS HERE */
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        Loading profile...
+      </div>
+    )
+  }
+
+  if (!data) return null
+
+
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      Loading profile...
-    </div>
-  )
-}
-
-if (!data) return null
-
-
-  return (
-    <div className="min-h-screen bg-black text-white px-6 pb-24">
+    <div className="min-h-screen bg-black text-white container-responsive py-8 pb-24">
 
       {/* ================= PROFILE CARD ================= */}
-      <div className="mt-10 bg-gradient-to-br from-black to-[#120900]
-        border border-toxic/40 rounded-3xl p-8 text-center">
+      <div className="mt-6 md:mt-10 bg-gradient-to-br from-black to-[#120900]
+        border border-toxic/40 rounded-3xl p-6 md:p-8 text-center">
 
         <div className="w-24 h-24 mx-auto rounded-full border-2 border-toxic
           flex items-center justify-center text-3xl">
@@ -235,14 +235,18 @@ if (!data) return null
           {matches.map(m => (
             <div
               key={m.id}
-              className="bg-white/5 border border-white/10 rounded-xl p-4"
+              className="bg-white/5 border border-white/10 rounded-xl p-4 md:p-6"
             >
-              <p className="font-semibold">
-                {m.game?.toUpperCase()} • {m.map}
-              </p>
-              <p className="text-xs text-gray-400">
-                Status: {m.paymentStatus?.toUpperCase()}
-              </p>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-semibold text-base md:text-lg">
+                    {m.game?.toUpperCase()} • {m.map}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Status: {m.paymentStatus?.toUpperCase()}
+                  </p>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -355,10 +359,9 @@ if (!data) return null
                 </div>
 
                 <span className={`px-3 py-1 rounded-full text-xs font-bold
-                  ${
-                    w.status === "approved"
-                      ? "bg-green-500/20 text-green-400"
-                      : w.status === "rejected"
+                  ${w.status === "approved"
+                    ? "bg-green-500/20 text-green-400"
+                    : w.status === "rejected"
                       ? "bg-red-500/20 text-red-400"
                       : "bg-yellow-500/20 text-yellow-400"
                   }`}
@@ -380,7 +383,7 @@ if (!data) return null
               EDIT PROFILE
             </h2>
 
-            {["name","whatsapp","bgmiUid","freeFireUid"].map(key => (
+            {["name", "whatsapp", "bgmiUid", "freeFireUid"].map(key => (
               <input
                 key={key}
                 value={form[key]}

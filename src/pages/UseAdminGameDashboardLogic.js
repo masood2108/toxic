@@ -12,7 +12,8 @@ import {
   query,
   where,
   orderBy,
-  getDoc
+  getDoc,
+  deleteDoc
 } from "firebase/firestore"
 
 /* ================= ADMIN CONFIG ================= */
@@ -66,6 +67,9 @@ export default function useAdminGameDashboardLogic() {
   const [isEditing, setIsEditing] = useState(false)
   const [zoomImage, setZoomImage] = useState(null)
 
+  /* ================= PUBLISH RESULTS STATE ================= */
+  const [matchResults, setMatchResults] = useState([])
+
   /* ================= FORM STATE ================= */
   const [matchType, setMatchType] = useState("Tournament")
   const [matchName, setMatchName] = useState("")
@@ -78,24 +82,24 @@ export default function useAdminGameDashboardLogic() {
   const [time, setTime] = useState("")
   const [roomId, setRoomId] = useState("")
   const [roomPassword, setRoomPassword] = useState("")
-/* ================= WITHDRAWALS ================= */
-const [withdrawals, setWithdrawals] = useState([])
-/* 🧾 WITHDRAW HISTORY */
-const [withdrawHistory, setWithdrawHistory] = useState([])
+  /* ================= WITHDRAWALS ================= */
+  const [withdrawals, setWithdrawals] = useState([])
+  /* 🧾 WITHDRAW HISTORY */
+  const [withdrawHistory, setWithdrawHistory] = useState([])
 
   /* ================= BROADCAST ================= */
   const [broadcastTitle, setBroadcastTitle] = useState("")
   const [broadcastMessage, setBroadcastMessage] = useState("")
   const [broadcastType, setBroadcastType] = useState("info")
-const [transactions, setTransactions] = useState([])
+  const [transactions, setTransactions] = useState([])
 
-const updateWithdrawStatus = async (id, status) => {
-  await updateDoc(doc(db, "withdrawals", id), {
-    status,
-    processedAt: Date.now(),
-    processedBy: auth.currentUser.email
-  })
-}
+  const updateWithdrawStatus = async (id, status) => {
+    await updateDoc(doc(db, "withdrawals", id), {
+      status,
+      processedAt: Date.now(),
+      processedBy: auth.currentUser.email
+    })
+  }
   /* ================= ANALYTICS ================= */
   const [analytics, setAnalytics] = useState({
     totalUsers: 0,
@@ -109,18 +113,64 @@ const updateWithdrawStatus = async (id, status) => {
   })
 
   /* ================= WITHDRAWALS ANALYTICS ================= */
-useEffect(() => {
-  const unsub = onSnapshot(
-    collection(db, "withdrawals"),
-    snap => {
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "withdrawals"),
+      snap => {
+        let totalWithdrawals = 0
+
+        snap.docs.forEach(d => {
+          const w = d.data()
+          if (w.status === "approved") {
+            totalWithdrawals += Number(w.amount || 0)
+          }
+        })
+
+        setAnalytics(prev => ({
+          ...prev,
+          totalWithdrawals,
+          netRevenue:
+            prev.totalDeposits -
+            prev.totalPrizes -
+            totalWithdrawals
+        }))
+      }
+    )
+
+    return () => unsub()
+  }, [])
+
+  /* ================= ADMIN WITHDRAWALS (REALTIME) ================= */
+  /* ================= WITHDRAWALS (REALTIME + ANALYTICS) ================= */
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "withdrawals"), snap => {
       let totalWithdrawals = 0
+      const history = []
+      const withdrawalTx = []
 
       snap.docs.forEach(d => {
-        const w = d.data()
+        const w = { id: d.id, ...d.data() }
+        history.push(w)
+
         if (w.status === "approved") {
           totalWithdrawals += Number(w.amount || 0)
+
+          // 👇 count withdrawals as transactions
+          withdrawalTx.push({
+            id: d.id,
+            name: w.name || "User",
+            amount: Number(w.amount),
+            type: "withdrawal",
+            status: "completed",
+            time: w.processedAt
+              ? new Date(w.processedAt).toLocaleString()
+              : new Date(w.requestedAt).toLocaleString()
+          })
         }
       })
+
+      setWithdrawals(history)
+      setWithdrawHistory(history)
 
       setAnalytics(prev => ({
         ...prev,
@@ -130,61 +180,15 @@ useEffect(() => {
           prev.totalPrizes -
           totalWithdrawals
       }))
-    }
-  )
 
-  return () => unsub()
-}, [])
-
-  /* ================= ADMIN WITHDRAWALS (REALTIME) ================= */
-/* ================= WITHDRAWALS (REALTIME + ANALYTICS) ================= */
-useEffect(() => {
-  const unsub = onSnapshot(collection(db, "withdrawals"), snap => {
-    let totalWithdrawals = 0
-    const history = []
-    const withdrawalTx = []
-
-    snap.docs.forEach(d => {
-      const w = { id: d.id, ...d.data() }
-      history.push(w)
-
-      if (w.status === "approved") {
-        totalWithdrawals += Number(w.amount || 0)
-
-        // 👇 count withdrawals as transactions
-        withdrawalTx.push({
-          id: d.id,
-          name: w.name || "User",
-          amount: Number(w.amount),
-          type: "withdrawal",
-          status: "completed",
-          time: w.processedAt
-            ? new Date(w.processedAt).toLocaleString()
-            : new Date(w.requestedAt).toLocaleString()
-        })
-      }
+      // 👇 merge with deposits
+      setTransactions(prev =>
+        [...prev.filter(t => t.type === "deposit"), ...withdrawalTx]
+      )
     })
 
-    setWithdrawals(history)
-    setWithdrawHistory(history)
-
-    setAnalytics(prev => ({
-      ...prev,
-      totalWithdrawals,
-      netRevenue:
-        prev.totalDeposits -
-        prev.totalPrizes -
-        totalWithdrawals
-    }))
-
-    // 👇 merge with deposits
-    setTransactions(prev =>
-      [...prev.filter(t => t.type === "deposit"), ...withdrawalTx]
-    )
-  })
-
-  return () => unsub()
-}, [])
+    return () => unsub()
+  }, [])
 
 
 
@@ -239,48 +243,48 @@ useEffect(() => {
       setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     })
   }, [selectedTournament])
-useEffect(() => {
-  const unsub = onSnapshot(
-    collectionGroup(db, "players"),
-    async snap => {
-      const txs = []
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collectionGroup(db, "players"),
+      async snap => {
+        const txs = []
 
-      for (const docSnap of snap.docs) {
-        const p = docSnap.data()
+        for (const docSnap of snap.docs) {
+          const p = docSnap.data()
 
-        if (p.paymentStatus === "approved") {
-          // 🔥 get tournamentId from path
-          const tournamentId = docSnap.ref.parent.parent.id
+          if (p.paymentStatus === "approved") {
+            // 🔥 get tournamentId from path
+            const tournamentId = docSnap.ref.parent.parent.id
 
-          // 🔥 fetch tournament to get entryFee
-          const tournamentSnap = await getDoc(
-            doc(db, "tournaments", tournamentId)
-          )
+            // 🔥 fetch tournament to get entryFee
+            const tournamentSnap = await getDoc(
+              doc(db, "tournaments", tournamentId)
+            )
 
-          if (!tournamentSnap.exists()) continue
+            if (!tournamentSnap.exists()) continue
 
-          const tournament = tournamentSnap.data()
+            const tournament = tournamentSnap.data()
 
-          txs.push({
-            id: docSnap.id,
-            name: p.ign || p.name || "Unknown User",
-            email: p.email,
-            amount: Number(tournament.entryFee || 0), // ✅ REAL VALUE
-            type: "deposit",
-            status: "completed",
-            time: p.joinedAt
-              ? new Date(p.joinedAt).toLocaleString()
-              : "Unknown time"
-          })
+            txs.push({
+              id: docSnap.id,
+              name: p.ign || p.name || "Unknown User",
+              email: p.email,
+              amount: Number(tournament.entryFee || 0), // ✅ REAL VALUE
+              type: "deposit",
+              status: "completed",
+              time: p.joinedAt
+                ? new Date(p.joinedAt).toLocaleString()
+                : "Unknown time"
+            })
+          }
         }
+
+        setTransactions(txs)
       }
+    )
 
-      setTransactions(txs)
-    }
-  )
-
-  return () => unsub()
-}, [])
+    return () => unsub()
+  }, [])
 
   /* ================= REAL ANALYTICS ================= */
   useEffect(() => {
@@ -345,11 +349,11 @@ useEffect(() => {
           }
         }
 
-setAnalytics(prev => ({
-  ...prev,
-  totalDeposits: deposits,
-  totalTransactions: tx + prev.totalWithdrawals > 0 ? 1 : 0
-}))
+        setAnalytics(prev => ({
+          ...prev,
+          totalDeposits: deposits,
+          totalTransactions: tx + prev.totalWithdrawals > 0 ? 1 : 0
+        }))
 
 
       }
@@ -380,6 +384,9 @@ setAnalytics(prev => ({
     const { date, time } = safeStartTime(t.startTime)
     setDate(date)
     setTime(time)
+
+    // Pre-load results if they exist, or start empty
+    setMatchResults(t.results || [])
   }
 
   const resetForm = () => {
@@ -393,6 +400,7 @@ setAnalytics(prev => ({
     setTime("")
     setRoomId("")
     setRoomPassword("")
+    setMatchResults([])
   }
 
   const createMatch = async () => {
@@ -416,7 +424,6 @@ setAnalytics(prev => ({
     })
     resetForm()
   }
-
   const updateMatch = async () => {
     await updateDoc(doc(db, "tournaments", selectedTournament.id), {
       matchType,
@@ -433,6 +440,22 @@ setAnalytics(prev => ({
     resetForm()
   }
 
+  const deleteMatch = async (matchId) => {
+    const isConfirm = window.confirm("Are you sure you want to PERMANENTLY DELETE this match and all its registrations?")
+    if (!isConfirm) return
+
+    try {
+      await deleteDoc(doc(db, "tournaments", matchId))
+      alert("Match deleted successfully")
+      if (selectedTournament?.id === matchId) {
+        resetForm()
+      }
+    } catch (err) {
+      console.error("Delete match error:", err)
+      alert("Failed to delete match")
+    }
+  }
+
   const updateStatus = async (uid, status) => {
     await updateDoc(
       doc(db, "tournamentPlayers", selectedTournament.id, "players", uid),
@@ -447,9 +470,46 @@ setAnalytics(prev => ({
       type: broadcastType,
       createdAt: Date.now()
     })
-    setBroadcastTitle("")
-    setBroadcastMessage("")
     setBroadcastType("info")
+  }
+
+  /* ================= RESULTS MANAGEMENT ================= */
+  const addResultRow = () => {
+    setMatchResults(prev => [
+      ...prev,
+      { userId: "", ign: "", rank: "", kills: "", prizeWon: "" }
+    ])
+  }
+
+  const updateResultRow = (index, field, value) => {
+    setMatchResults(prev => {
+      const copy = [...prev]
+      copy[index][field] = value
+      return copy
+    })
+  }
+
+  const removeResultRow = index => {
+    setMatchResults(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const publishResults = async () => {
+    if (!selectedTournament) return
+    const isConfirm = window.confirm("Are you sure you want to completely publish these results and mark the match completed?")
+    if (!isConfirm) return
+
+    await updateDoc(doc(db, "tournaments", selectedTournament.id), {
+      status: "completed",
+      results: matchResults.map(r => ({
+        ...r,
+        rank: Number(r.rank) || 0,
+        kills: Number(r.kills) || 0,
+        prizeWon: Number(r.prizeWon) || 0
+      }))
+    })
+
+    // Optional: add a broadcast or a subtle notification
+    resetForm()
   }
 
   return {
@@ -472,15 +532,15 @@ setAnalytics(prev => ({
     setMap,
     entryFee,
     setEntryFee,
-      withdrawHistory,
+    withdrawHistory,
 
     prizePool,
     setPrizePool,
     slots,
     setSlots,
     transactions,
- withdrawals,
-  updateWithdrawStatus,
+    withdrawals,
+    updateWithdrawStatus,
     date,
     setDate,
     time,
@@ -502,6 +562,15 @@ setAnalytics(prev => ({
     isEditing,
     createMatch,
     updateMatch,
+    deleteMatch,
+
+    // Publish Results
+    matchResults,
+    addResultRow,
+    updateResultRow,
+    removeResultRow,
+    publishResults,
+
     resetForm,
     zoomImage,
     setZoomImage,

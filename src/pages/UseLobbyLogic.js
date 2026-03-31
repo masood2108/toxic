@@ -12,7 +12,8 @@ import {
   where,
   orderBy,
   increment,
-  getDocs
+  getDocs,
+  getDoc
 } from "firebase/firestore"
 
 export default function useLobbyLogic() {
@@ -110,6 +111,40 @@ export default function useLobbyLogic() {
 
     return () => unsub()
   }, [])
+
+  /* ================= MY PAST MATCHES ================= */
+  const [myPastMatches, setMyPastMatches] = useState([])
+
+  useEffect(() => {
+    if (!auth.currentUser || !gameId) return
+
+    const unsub = onSnapshot(
+      query(collection(db, "tournaments"), where("game", "==", gameId.toLowerCase()), where("status", "==", "completed")),
+      async snap => {
+        const result = []
+        for (const tDoc of snap.docs) {
+          try {
+            const playerSnap = await getDoc(
+              doc(db, "tournamentPlayers", tDoc.id, "players", auth.currentUser.uid)
+            )
+            if (playerSnap.exists()) {
+              result.push({
+                id: tDoc.id,
+                ...tDoc.data(),
+                ...playerSnap.data()
+              })
+            }
+          } catch (e) {
+            console.error("Error fetching past match player data", e)
+          }
+        }
+        result.sort((a, b) => b.createdAtClient - a.createdAtClient)
+        setMyPastMatches(result)
+      }
+    )
+
+    return () => unsub()
+  }, [gameId])
 
   /* ================= AUTO DETECT JOINED MATCH (STEP 1) ================= */
   useEffect(() => {
@@ -384,6 +419,7 @@ export default function useLobbyLogic() {
     setBgmiUid,
 
     confirmJoin,
-    leaderboard
+    leaderboard,
+    myPastMatches
   }
 }

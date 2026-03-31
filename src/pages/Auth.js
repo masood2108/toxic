@@ -47,7 +47,7 @@ export default function Auth() {
       <div className="relative z-10 w-full max-w-md text-center">
 
         {/* TITLE */}
-        <h1 className="text-5xl font-extrabold mb-3 bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+        <h1 className="text-3xl md:text-5xl font-extrabold mb-3 bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
           ToxicRush Esports
         </h1>
 
@@ -59,7 +59,7 @@ export default function Auth() {
         </p>
 
         {/* CARD */}
-        <div className="rounded-3xl p-8 bg-gradient-to-br from-pink-500 to-purple-600 shadow-2xl">
+        <div className="rounded-3xl p-6 md:p-8 bg-gradient-to-br from-pink-500 to-purple-600 shadow-2xl">
 
           {/* MODE SWITCH */}
           <div className="flex bg-white/10 rounded-full p-1 mb-6">
@@ -186,12 +186,12 @@ export default function Auth() {
             {loading
               ? "PROCESSING..."
               : mode === "login"
-              ? useOtp
-                ? otpSent
-                  ? "VERIFY OTP"
-                  : "GET OTP"
-                : "LOGIN"
-              : "CREATE ACCOUNT"}
+                ? useOtp
+                  ? otpSent
+                    ? "VERIFY OTP"
+                    : "GET OTP"
+                  : "LOGIN"
+                : "CREATE ACCOUNT"}
           </button>
 
         </div>

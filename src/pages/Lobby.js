@@ -42,7 +42,8 @@ export default function Lobby() {
     setBgmiUid,
 
     confirmJoin,
-    leaderboard
+    leaderboard,
+    myPastMatches
   } = useLobbyLogic()
 
 
@@ -71,7 +72,7 @@ export default function Lobby() {
       className="min-h-screen bg-black text-white"
     >
       {/* ================= TOP BAR ================= */}
-      <div className="px-10 py-6 border-b border-red-500 top-bar">
+      <div className="border-b border-red-500 top-bar">
         <h1 className="text-2xl font-heading font-bold text-red-500 tracking-widest">
           TOXICRUSH
         </h1>
@@ -90,9 +91,9 @@ export default function Lobby() {
               )}
             </button>
 
-            {/* DROPDOWN */}
+            {/* DROPDOWN - RESPONSIVE POSITIONING */}
             {showNotifications && (
-              <div className="absolute right-0 mt-3 w-80 bg-black border border-white/10 rounded-xl shadow-lg z-50">
+              <div className="fixed inset-x-4 top-20 md:absolute md:inset-auto md:right-0 md:mt-3 md:w-80 bg-black border border-white/10 rounded-xl shadow-lg z-50">
                 <div className="px-4 py-3 border-b border-white/10 flex justify-between">
                   <span className="font-semibold">Notifications</span>
                   <button
@@ -145,7 +146,7 @@ export default function Lobby() {
       </div>
 
       {/* ================= CONTENT ================= */}
-      <div className="page space-y-10">
+      <div className="container-responsive py-8 space-y-10">
         {/* WELCOME */}
         <p className="text-lg">
           Welcome,{" "}
@@ -162,7 +163,7 @@ export default function Lobby() {
         </p>
 
         {/* TABS */}
-        <div className="tabs">
+        <div className="tabs-scroll">
           {[
             { name: gameTabName, icon: "🎮" },
             { name: "LEADERBOARD", icon: "🏆" },
@@ -228,7 +229,7 @@ export default function Lobby() {
             ].map(section => (
               <div
                 key={section.title}
-                className="bg-white/5 rounded-3xl p-8 border-l-4 border-red-500"
+                className="bg-white/5 rounded-3xl p-6 md:p-8 border-l-4 border-red-500"
               >
                 <h2 className="text-2xl font-heading font-bold text-red-500 mb-4">
                   {section.title}
@@ -255,8 +256,8 @@ export default function Lobby() {
 
         {/* ================= LEADERBOARD ================= */}
         {activeTab === "LEADERBOARD" && (
-          <div className="bg-white/5 rounded-3xl p-6 sm:p-10 text-white shadow-xl">
-            <h2 className="text-2xl font-heading font-bold mb-8 text-yellow-500 flex items-center gap-3">
+          <div className="bg-white/5 rounded-3xl p-5 sm:p-10 text-white shadow-xl">
+            <h2 className="text-xl md:text-2xl font-heading font-bold mb-8 text-yellow-500 flex items-center gap-3">
               🏆 TOP EARNERS
             </h2>
 
@@ -299,8 +300,8 @@ export default function Lobby() {
         {activeTab === gameTabName && (
           <>
             {/* REGISTERED MATCHES */}
-            <div className="bg-white/5 card section">
-              <h2 className="text-2xl font-heading font-semibold mb-6">
+            <div className="card-responsive">
+              <h2 className="text-xl md:text-2xl font-heading font-semibold mb-6">
                 🎮 MY REGISTERED MATCHES
               </h2>
 
@@ -339,8 +340,8 @@ export default function Lobby() {
             </div>
 
             {/* AVAILABLE MATCHES */}
-            <div className="bg-white/5 rounded-3xl p-10">
-              <h2 className="text-2xl font-heading font-semibold mb-6">
+            <div className="bg-white/5 rounded-3xl p-5 md:p-10">
+              <h2 className="text-xl md:text-2xl font-heading font-semibold mb-6">
                 🔥 AVAILABLE MATCHES
               </h2>
 
@@ -418,6 +419,54 @@ export default function Lobby() {
                 )
               })}
             </div>
+
+            {/* MY PAST MATCHES */}
+            {myPastMatches.length > 0 && (
+              <div className="bg-white/5 rounded-3xl p-10 mt-10">
+                <h2 className="text-2xl font-heading font-semibold mb-6 flex items-center gap-2">
+                  📜 MY PAST MATCHES
+                </h2>
+
+                <div className="space-y-4">
+                  {myPastMatches.map(m => {
+                    const myResult = m.results?.find(r => r.userId === auth.currentUser?.uid)
+
+                    return (
+                      <div
+                        key={m.id}
+                        className="bg-black/40 border border-white/10 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                      >
+                        <div>
+                          <h3 className="font-semibold text-base md:text-lg text-gray-300">
+                            {m.map} • {m.matchType || m.type || "Tournament"}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Prize Pool: <span className="text-gray-300">₹{m.prize}</span>
+                          </p>
+                          <p className="text-xs text-gray-600 mt-2">
+                            Join Status: {m.paymentStatus?.toUpperCase() || "UNKNOWN"}
+                          </p>
+                        </div>
+
+                        <div className="text-right flex flex-col items-end gap-2">
+                          {myResult ? (
+                            <div className="bg-yellow-500/10 border border-yellow-500/30 px-4 py-2 rounded-lg text-right">
+                              <p className="text-yellow-400 font-bold text-lg">Rank #{myResult.rank}</p>
+                              <p className="text-xs text-gray-300 mb-1">Kills: {myResult.kills}</p>
+                              <p className="text-sm font-bold text-green-400">Won: ₹{myResult.prizeWon}</p>
+                            </div>
+                          ) : (
+                            <span className="bg-gray-800 text-gray-400 px-4 py-2 rounded-lg text-sm font-semibold">
+                              COMPLETED
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

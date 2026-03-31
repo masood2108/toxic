@@ -6,15 +6,15 @@ export default function Rules() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="min-h-screen bg-black text-white px-10 py-12"
+      className="min-h-screen bg-black text-white container-responsive py-8 md:py-12"
     >
       {/* TITLE */}
-      <h1 className="text-4xl font-bold flex items-center gap-3 mb-10">
+      <h1 className="text-2xl md:text-4xl font-bold flex items-center gap-3 mb-8 md:mb-10">
         📜 RULES & REGULATIONS
       </h1>
 
       {/* ===== MATCH RULES ===== */}
-      <div className="bg-white/5 rounded-3xl p-8 mb-10 border-l-4 border-red-500">
+      <div className="bg-white/5 rounded-3xl p-6 md:p-8 mb-10 border-l-4 border-red-500">
         <h2 className="text-2xl font-bold text-red-500 flex items-center gap-2 mb-5">
           🎮 MATCH RULES
         </h2>
@@ -29,7 +29,7 @@ export default function Rules() {
       </div>
 
       {/* ===== WALLET RULES ===== */}
-      <div className="bg-white/5 rounded-3xl p-8 mb-10 border-l-4 border-red-500">
+      <div className="bg-white/5 rounded-3xl p-6 md:p-8 mb-10 border-l-4 border-red-500">
         <h2 className="text-2xl font-bold text-red-500 flex items-center gap-2 mb-5">
           💰 WALLET RULES
         </h2>
@@ -44,7 +44,7 @@ export default function Rules() {
       </div>
 
       {/* ===== PRIZE DISTRIBUTION ===== */}
-      <div className="bg-white/5 rounded-3xl p-8 mb-10 border-l-4 border-red-500">
+      <div className="bg-white/5 rounded-3xl p-6 md:p-8 mb-10 border-l-4 border-red-500">
         <h2 className="text-2xl font-bold text-red-500 flex items-center gap-2 mb-5">
           🏆 PRIZE DISTRIBUTION
         </h2>
