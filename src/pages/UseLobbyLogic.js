@@ -5,15 +5,13 @@ import {
   collection,
   collectionGroup,
   doc,
-  setDoc,
-  updateDoc,
   onSnapshot,
   query,
   where,
   orderBy,
-  increment,
   getDocs,
-  getDoc
+  getDoc,
+  runTransaction
 } from "firebase/firestore"
 
 export default function useLobbyLogic() {
@@ -345,12 +343,25 @@ export default function useLobbyLogic() {
       const user = auth.currentUser
       const screenshotUrl = await uploadToCloudinary(paymentScreenshot)
 
-      const playerRef = doc(db, "tournamentPlayers", selectedTournamentId, "players", user.uid)
-      const tournamentRef = doc(db, "tournaments", selectedTournamentId)
+      await runTransaction(db, async (transaction) => {
+        const tournamentRef = doc(db, "tournaments", selectedTournamentId)
+        const playerRef = doc(db, "tournamentPlayers", selectedTournamentId, "players", user.uid)
 
-      await setDoc(
-        playerRef,
-        {
+        const tournamentDoc = await transaction.get(tournamentRef)
+        if (!tournamentDoc.exists()) {
+          throw new Error("Tournament does not exist")
+        }
+
+        const data = tournamentDoc.data()
+        const currentJoined = data.joinedCount || 0
+        const maxSlots = data.maxPlayers || 0
+
+        if (currentJoined >= maxSlots) {
+          throw new Error("MATCH_FULL")
+        }
+
+        // Add player and increment count together
+        transaction.set(playerRef, {
           ign,
           bgmiUid,
           email: user.email,
@@ -359,15 +370,12 @@ export default function useLobbyLogic() {
           joinedAt: Date.now(),
           attempts: userStatus === "rejected" ? attempts + 1 : 1,
           lastRejectedAt: null
-        },
-        { merge: true }
-      )
+        }, { merge: true })
 
-      if (userStatus !== "pending" && userStatus !== "approved") {
-        await updateDoc(tournamentRef, {
-          joinedCount: increment(1)
+        transaction.update(tournamentRef, {
+          joinedCount: currentJoined + 1
         })
-      }
+      })
 
       setShowJoinModal(false)
       setAlreadyJoined(true)
@@ -375,9 +383,15 @@ export default function useLobbyLogic() {
       setBgmiUid("")
       setPaymentScreenshot(null)
       setPreviewUrl(null)
+      setMessage("✅ Registration submitted! Wait for approval.")
 
-    } catch {
-      setMessage("❌ Something went wrong")
+    } catch (err) {
+      console.error("Join error:", err)
+      if (err.message === "MATCH_FULL") {
+        setMessage("❌ Sorry, this match just got full!")
+      } else {
+        setMessage("❌ Something went wrong")
+      }
     }
 
     setJoining(false)

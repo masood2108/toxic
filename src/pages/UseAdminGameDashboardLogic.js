@@ -13,7 +13,9 @@ import {
   where,
   orderBy,
   getDoc,
-  deleteDoc
+  deleteDoc,
+  writeBatch,
+  increment
 } from "firebase/firestore"
 
 /* ================= ADMIN CONFIG ================= */
@@ -498,15 +500,54 @@ export default function useAdminGameDashboardLogic() {
     const isConfirm = window.confirm("Are you sure you want to completely publish these results and mark the match completed?")
     if (!isConfirm) return
 
-    await updateDoc(doc(db, "tournaments", selectedTournament.id), {
+    const batch = writeBatch(db)
+    const tid = selectedTournament.id
+
+    const results = matchResults.map(r => ({
+      ...r,
+      rank: Number(r.rank) || 0,
+      kills: Number(r.kills) || 0,
+      prizeWon: Number(r.prizeWon) || 0
+    }))
+
+    // 1. Update tournament doc
+    const tournamentRef = doc(db, "tournaments", tid)
+    batch.update(tournamentRef, {
       status: "completed",
-      results: matchResults.map(r => ({
-        ...r,
-        rank: Number(r.rank) || 0,
-        kills: Number(r.kills) || 0,
-        prizeWon: Number(r.prizeWon) || 0
-      }))
+      results
     })
+
+    // 2. Credit winners and record transactions
+    results.forEach(r => {
+      if (r.userId && r.prizeWon > 0) {
+        const userRef = doc(db, "users", r.userId)
+        const txRef = doc(collection(db, "transactions"))
+
+        // Increment balance
+        batch.update(userRef, {
+          balance: increment(r.prizeWon)
+        })
+
+        // Record transaction
+        batch.set(txRef, {
+          userId: r.userId,
+          amount: r.prizeWon,
+          type: "credit",
+          category: "match_prize",
+          description: `Won ₹${r.prizeWon} in ${selectedTournament.matchName}`,
+          matchId: tid,
+          timestamp: Date.now()
+        })
+      }
+    })
+
+    try {
+      await batch.commit()
+      alert("Results published and prizes distributed successfully!")
+    } catch (err) {
+      console.error("Publish results error:", err)
+      alert("Failed to publish results. Please check logs.")
+    }
 
     // Optional: add a broadcast or a subtle notification
     resetForm()

@@ -6,11 +6,13 @@ import {
   updateDoc,
   collection,
   getDoc,
-  setDoc
+  setDoc,
+  query,
+  where,
+  orderBy
 } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
 import AISupportChat from "../components/AISupportChat"
-import { query, where } from "firebase/firestore"
 
 export default function Profile() {
 
@@ -31,6 +33,7 @@ export default function Profile() {
   const [upiId, setUpiId] = useState("")
   const [withdrawStatus, setWithdrawStatus] = useState(null)
   const [withdrawHistory, setWithdrawHistory] = useState([])
+  const [transactions, setTransactions] = useState([])
 
   /* ================= PROFILE STATE ================= */
   const [data, setData] = useState(null)
@@ -137,6 +140,23 @@ export default function Profile() {
     return () => unsub()
   }, [user])
 
+  /* ================= TRANSACTION HISTORY ================= */
+  useEffect(() => {
+    if (!user) return
+
+    const q = query(
+      collection(db, "transactions"),
+      where("userId", "==", user.uid),
+      orderBy("timestamp", "desc")
+    )
+
+    const unsub = onSnapshot(q, snap => {
+      setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    }, (err) => console.error("Transaction listener error:", err))
+
+    return () => unsub()
+  }, [user])
+
   /* ================= MATCH HISTORY ================= */
   useEffect(() => {
     if (!user) return
@@ -198,6 +218,12 @@ export default function Profile() {
 
         <h2 className="mt-4 text-2xl font-bold">{data.name}</h2>
         <p className="text-gray-400 text-sm">{data.email}</p>
+
+        {/* 💳 WALLET BALANCE */}
+        <div className="mt-6 inline-block bg-toxic/10 border border-toxic/40 rounded-2xl px-8 py-4">
+          <p className="text-gray-400 text-xs uppercase tracking-widest font-bold">Wallet Balance</p>
+          <h3 className="text-3xl font-orbitron text-toxic">₹{data.balance || 0}</h3>
+        </div>
       </div>
 
       {/* ================= INFO ================= */}
@@ -247,6 +273,38 @@ export default function Profile() {
                   </p>
                 </div>
               </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ================= TRANSACTION HISTORY ================= */}
+      <div className="mt-12">
+        <h2 className="font-orbitron text-lg mb-4 tracking-widest text-toxic">
+          TRANSACTION HISTORY
+        </h2>
+
+        {transactions.length === 0 && (
+          <p className="text-gray-400 text-sm">
+            No transactions yet.
+          </p>
+        )}
+
+        <div className="space-y-3">
+          {transactions.map(t => (
+            <div
+              key={t.id}
+              className="bg-white/5 border border-white/10 rounded-xl p-4 flex justify-between items-center"
+            >
+              <div>
+                <p className="font-semibold text-sm capitalize">{t.description || t.category?.replace('_', ' ')}</p>
+                <p className="text-[10px] text-gray-400">
+                  {new Date(t.timestamp).toLocaleString()}
+                </p>
+              </div>
+              <p className={`font-bold ${t.type === 'credit' ? 'text-green-400' : 'text-red-400'}`}>
+                {t.type === 'credit' ? '+' : '-'}₹{t.amount}
+              </p>
             </div>
           ))}
         </div>
