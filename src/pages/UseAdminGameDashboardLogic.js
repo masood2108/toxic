@@ -98,6 +98,48 @@ export default function useAdminGameDashboardLogic() {
   const [broadcastType, setBroadcastType] = useState("info")
   const [transactions, setTransactions] = useState([])
 
+  /* ================= ADMIN OVERVIEW STATS ================= */
+  const [adminOverview, setAdminOverview] = useState({
+    pendingApprovals: 0,
+    completedMatches: 0,
+    totalJoined: 0
+  })
+
+  useEffect(() => {
+    if (!gameKey) return
+
+    // 1. Pending Approvals (Across all matches for this game)
+    const qPending = query(collectionGroup(db, "players"), where("paymentStatus", "==", "pending"))
+    const unsubPending = onSnapshot(qPending, snap => {
+      // Filter by gameId in memory if collectionGroup doesn't support nested gameId where
+      // (Actually tournament ID contains the gameKey often, e.g. "bgmi_...")
+      const myPending = snap.docs.filter(d => d.ref.path.includes(gameKey))
+      setAdminOverview(prev => ({ ...prev, pendingApprovals: myPending.length }))
+    })
+
+    // 2. Tournament Stats
+    const qTournaments = query(collection(db, "tournaments"), where("game", "==", gameKey))
+    const unsubTournaments = onSnapshot(qTournaments, snap => {
+      let completed = 0
+      let joined = 0
+      snap.docs.forEach(d => {
+        const data = d.data()
+        if (data.status === "completed") completed++
+        joined += Number(data.joinedCount) || 0
+      })
+      setAdminOverview(prev => ({
+        ...prev,
+        completedMatches: completed,
+        totalJoined: joined
+      }))
+    })
+
+    return () => {
+      unsubPending()
+      unsubTournaments()
+    }
+  }, [gameKey])
+
   const updateWithdrawStatus = async (id, status) => {
     await updateDoc(doc(db, "withdrawals", id), {
       status,
@@ -701,6 +743,7 @@ export default function useAdminGameDashboardLogic() {
     setResultsProof,
     resultsProofUrl,
     isUploadingProof,
+    adminOverview,
     addResultRow,
     addPlayerToResults,
     updateResultRow,

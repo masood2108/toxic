@@ -50,6 +50,34 @@ export default function AdminGameDashboard() {
         </button>
       </div>
 
+      {/* ================= ADMIN QUICK SUMMARY ================= */}
+      <div className="bg-red-500/10 border border-red-500/50 rounded-3xl p-6 mb-10 flex flex-col md:flex-row gap-8 items-center justify-between">
+        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+          <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1 leading-tight">Pending<br />Approvals</p>
+          <h3 className={`text-4xl font-black ${d.adminOverview.pendingApprovals > 0 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+            {d.adminOverview.pendingApprovals}
+          </h3>
+        </div>
+        <div className="w-px h-12 bg-white/10 hidden md:block" />
+        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+          <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1 leading-tight">Completed<br />Matches</p>
+          <h3 className="text-4xl font-black text-white">{d.adminOverview.completedMatches}</h3>
+        </div>
+        <div className="w-px h-12 bg-white/10 hidden md:block" />
+        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+          <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1 leading-tight">Total<br />Joined</p>
+          <h3 className="text-4xl font-black text-white">{d.adminOverview.totalJoined}</h3>
+        </div>
+        <div className="hidden lg:block">
+          <button
+            onClick={() => d.setActiveTab("MATCHES")}
+            className="px-8 py-3 bg-red-500 text-black font-black text-xs uppercase tracking-widest rounded-xl hover:bg-red-400 transition-all shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+          >
+            MANAGE MATCHES
+          </button>
+        </div>
+      </div>
+
       {/* ================= STATS ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-12">
         <Stat title="Total Users" value={d.totalUsers} color="text-red-400" />

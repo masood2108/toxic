@@ -47,6 +47,7 @@ export default function useLobbyLogic() {
   /* 🆕 ROOM DETAILS (ADDED – NOTHING REMOVED) */
   const [roomId, setRoomId] = useState("")
   const [roomPassword, setRoomPassword] = useState("")
+  const [userName, setUserName] = useState("")
   const prevRoomId = useRef("")
 
   /* ================= REQUEST PERMISSION FOR NOTIFICATIONS ================= */
@@ -54,6 +55,15 @@ export default function useLobbyLogic() {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission()
     }
+  }, [])
+
+  /* ================= FETCH USER NAME ================= */
+  useEffect(() => {
+    if (!auth.currentUser) return
+    const unsub = onSnapshot(doc(db, "users", auth.currentUser.uid), snap => {
+      if (snap.exists()) setUserName(snap.data().name || "")
+    })
+    return () => unsub()
   }, [])
 
   /* ================= FETCH TOURNAMENTS ================= */
@@ -164,6 +174,23 @@ export default function useLobbyLogic() {
 
     return () => unsub()
   }, [gameId])
+
+  /* ================= USER STATS ================= */
+  const [userStats, setUserStats] = useState({ matchesPlayed: 0, totalWinnings: 0 })
+
+  useEffect(() => {
+    if (!auth.currentUser || myPastMatches.length === 0) return
+
+    const totalWon = myPastMatches.reduce((acc, m) => {
+      const myResult = m.results?.find(r => r.userId === auth.currentUser.uid)
+      return acc + (Number(myResult?.prizeWon) || 0)
+    }, 0)
+
+    setUserStats({
+      matchesPlayed: myPastMatches.length,
+      totalWinnings: totalWon
+    })
+  }, [auth.currentUser, myPastMatches])
 
   /* ================= AUTO DETECT JOINED MATCH (STEP 1) ================= */
   useEffect(() => {
@@ -452,6 +479,8 @@ export default function useLobbyLogic() {
     leaderboard,
     myPastMatches,
     notifications,
-    markNotificationAsRead
+    markNotificationAsRead,
+    userStats,
+    userName
   }
 }

@@ -33,7 +33,9 @@ export default function Lobby() {
     leaderboard,
     myPastMatches,
     notifications,
-    markNotificationAsRead
+    markNotificationAsRead,
+    userStats,
+    userName
   } = useLobbyLogic()
 
   const [showNotifModal, setShowNotifModal] = useState(false)
@@ -100,7 +102,8 @@ export default function Lobby() {
           <p className="text-lg">
             Welcome,{" "}
             <span className="text-red-500 font-semibold">
-              {auth.currentUser?.displayName ||
+              {userName ||
+                auth.currentUser?.displayName ||
                 auth.currentUser?.email ||
                 "Player"}
             </span>
@@ -118,6 +121,18 @@ export default function Lobby() {
               </span>
             )}
           </button>
+        </div>
+
+        {/* ================= QUICK STATS BAR ================= */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Matches Played</p>
+            <p className="text-2xl font-black text-white">{userStats.matchesPlayed}</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Total Winnings</p>
+            <p className="text-2xl font-black text-green-500">₹{userStats.totalWinnings}</p>
+          </div>
         </div>
 
         {/* GAME ID */}
@@ -291,18 +306,27 @@ export default function Lobby() {
 
                   {userStatus === "approved" && (
                     <div className="mt-4 bg-black/50 border border-green-500/30 rounded-lg p-3">
-                      <p className="text-sm text-green-400 font-semibold">
-                        🎮 Room Details
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-sm text-green-400 font-semibold">🎮 Room Details</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`ID: ${roomId} Pass: ${roomPassword}`)
+                              alert("Copied Room Details!")
+                            }}
+                            className="bg-green-500/10 text-green-500 text-[10px] px-2 py-1 rounded border border-green-500/30 hover:bg-green-500 hover:text-black transition-all font-bold"
+                          >
+                            COPY ALL
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-white mt-1 flex justify-between">
+                        <span>Room ID: <span className="font-mono text-green-400">{roomId}</span></span>
                       </p>
-                      <p className="text-sm text-white mt-1">
-                        Room ID: <span className="font-mono">{roomId}</span>
+                      <p className="text-sm text-white flex justify-between">
+                        <span>Password: <span className="font-mono text-green-400">{roomPassword}</span></span>
                       </p>
-                      <p className="text-sm text-white">
-                        Password: <span className="font-mono">{roomPassword}</span>
-                      </p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        Use these details to enter the game
-                      </p>
+                      <p className="text-xs text-gray-400 mt-2">Use these details to enter the game</p>
                     </div>
                   )}
 
@@ -332,20 +356,56 @@ export default function Lobby() {
                 return (
                   <motion.div
                     key={t.id}
-                    whileHover={{ scale: 1.02 }}
-                    className="bg-black/40 border border-white/10 rounded-2xl p-6 mb-6"
+                    whileHover={{ scale: 1.01 }}
+                    className={`relative overflow-hidden border rounded-3xl p-6 mb-6 transition-all group ${t.map?.toUpperCase().includes("ERANGEL") ? "bg-gradient-to-br from-black to-emerald-900/20 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]" :
+                      t.map?.toUpperCase().includes("MIRAMAR") ? "bg-gradient-to-br from-black to-amber-900/20 border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.05)]" :
+                        t.map?.toUpperCase().includes("SANHOK") ? "bg-gradient-to-br from-black to-green-900/20 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.05)]" :
+                          t.map?.toUpperCase().includes("VIKENDI") ? "bg-gradient-to-br from-black to-blue-900/20 border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.05)]" :
+                            "bg-black/40 border-white/10"
+                      }`}
                   >
-                    <h3 className="font-semibold text-lg">
+                    {/* STATUS BADGE */}
+                    <div className="absolute top-4 right-4">
+                      {isClosed ? (
+                        <span className="bg-gray-800 text-gray-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">CLOSED</span>
+                      ) : progress >= 90 ? (
+                        <span className="bg-red-500 text-black px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">FILLING FAST!</span>
+                      ) : (
+                        <span className="bg-green-500/20 text-green-500 border border-green-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">OPEN</span>
+                      )}
+                    </div>
+
+                    <h3 className="font-heading text-xl tracking-wide group-hover:text-red-500 transition-colors">
                       {t.map} • {t.gameMode || t.type}
                     </h3>
 
-                    <p className="text-sm text-gray-400 mt-1">
-                      Entry: ₹{t.entryFee} • Prize: ₹{t.prize}
-                    </p>
+                    <div className="flex gap-6 mt-2">
+                      <p className="text-xs text-gray-400 flex flex-col">
+                        <span className="text-[9px] uppercase font-black text-gray-600">Entry Fee</span>
+                        <span className="text-white font-bold">₹{t.entryFee}</span>
+                      </p>
+                      <p className="text-xs text-gray-400 flex flex-col">
+                        <span className="text-[9px] uppercase font-black text-gray-600">Prize Pool</span>
+                        <span className="text-green-400 font-bold">₹{t.prize}</span>
+                      </p>
+                    </div>
 
-                    <p className="text-xs text-gray-400 mt-2">
-                      Players Joined: {t.joinedCount}/{t.maxPlayers}
-                    </p>
+                    {/* PROGRESS BAR */}
+                    <div className="mt-6 space-y-2">
+                      <div className="flex justify-between items-end">
+                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest flex items-center gap-2">
+                          SLOTS: <span className="text-white">{t.joinedCount} / {t.maxPlayers}</span>
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-bold">{progress}% FULL</p>
+                      </div>
+                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progress}%` }}
+                          className={`h-full transition-all duration-1000 ${progress >= 90 ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-red-600'}`}
+                        />
+                      </div>
+                    </div>
 
                     <p className="text-xs text-gray-400 mt-1">
                       Match Status:{" "}
