@@ -435,19 +435,27 @@ export default function useLobbyLogic() {
 
         // Add team and increment count together
         transaction.set(playerRef, {
-          captainEmail: user.email,
-          ...(teamName.trim() ? { teamName: teamName.trim() } : {}),
-          ...(transactionId.trim() ? { transactionId: transactionId.trim() } : {}),
-          players: uploadedPlayers,
-          paymentStatus: "pending",
-          joinedAt: Date.now(),
-          attempts: userStatus === "rejected" ? attempts + 1 : 1,
-          lastRejectedAt: null
-        }, { merge: true })
+  captainEmail: user.email,
 
-        transaction.update(tournamentRef, {
-          joinedCount: currentJoined + uploadedPlayers.length
-        })
+  ...(teamName.trim() ? { teamName: teamName.trim() } : {}),
+  ...(transactionId.trim() ? { transactionId: transactionId.trim() } : {}),
+
+  players: uploadedPlayers,
+  teamSize: uploadedPlayers.length, // ✅ ADDED HERE
+
+  paymentStatus: "pending",
+  joinedAt: Date.now(),
+  attempts: userStatus === "rejected" ? attempts + 1 : 1,
+  lastRejectedAt: null
+
+}, { merge: true })
+
+        const currentTeams = data.teamCount || 0
+
+transaction.update(tournamentRef, {
+  joinedCount: currentJoined + uploadedPlayers.length, // players
+  teamCount: currentTeams + 1 // teams
+})
       })
 
       setShowJoinModal(false)

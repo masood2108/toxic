@@ -215,6 +215,8 @@ export default function Lobby() {
                             <p className="text-xs text-gray-400">Entry: <span className="text-white font-bold">₹{t.entryFee}</span></p>
                             <p className="text-xs text-gray-400">Prize: <span className="text-green-400 font-bold">₹{t.prize}</span></p>
                             <p className="text-xs text-gray-400">Players: <span className="text-white font-bold">{t.joinedCount}/{t.maxPlayers}</span></p>
+                            <p className="text-xs text-gray-400">Team: <span className="text-white font-bold">{t.teamCount || 0}</span></p>
+
                           </div>
                         </div>
                         <span className="bg-green-500 text-black px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">
