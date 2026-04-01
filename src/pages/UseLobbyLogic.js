@@ -429,9 +429,9 @@ export default function useLobbyLogic() {
         const currentJoined = data.joinedCount || 0
         const maxSlots = data.maxPlayers || 0
 
-        if (currentJoined >= maxSlots) {
-          throw new Error("MATCH_FULL")
-        }
+        if (currentJoined + uploadedPlayers.length > maxSlots) {
+  throw new Error("MATCH_FULL")
+}
 
         // Add team and increment count together
         transaction.set(playerRef, {
