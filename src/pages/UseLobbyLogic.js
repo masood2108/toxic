@@ -11,6 +11,7 @@ import {
   orderBy,
   getDocs,
   getDoc,
+  updateDoc,
   runTransaction
 } from "firebase/firestore"
 
@@ -34,16 +35,14 @@ export default function useLobbyLogic() {
   const [attempts, setAttempts] = useState(0)
   const [message, setMessage] = useState("")
 
-  const [ign, setIgn] = useState("")
-  const [bgmiUid, setBgmiUid] = useState("")
+  const [joining, setJoining] = useState(false)
+  const [showJoinModal, setShowJoinModal] = useState(false)
 
-  const [paymentScreenshot, setPaymentScreenshot] = useState(null)
-  const [previewUrl, setPreviewUrl] = useState(null)
+  /* 👥 TEAM PLAYERS (REFACTORED) */
+  const [teamPlayers, setTeamPlayers] = useState([])
 
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
-  const [joining, setJoining] = useState(false)
-  const [showJoinModal, setShowJoinModal] = useState(false)
 
   /* 🆕 ROOM DETAILS (ADDED – NOTHING REMOVED) */
   const [roomId, setRoomId] = useState("")
@@ -79,36 +78,58 @@ export default function useLobbyLogic() {
   const [leaderboard, setLeaderboard] = useState([])
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "withdrawals"), snap => {
-      const userEarnings = {}
+    const unsub = onSnapshot(collection(db, "transactions"), (snap) => {
+      const userEarnings = {};
 
-      snap.docs.forEach(d => {
-        const w = d.data()
-        if (w.status === "approved") {
-          const uid = w.userId
+      snap.docs.forEach((d) => {
+        const tx = d.data();
+        if (tx.category === "match_prize") {
+          const uid = tx.userId;
           if (uid) {
             if (!userEarnings[uid]) {
               userEarnings[uid] = {
                 userId: uid,
-                name: w.name || "Unknown Player",
-                email: w.email || "",
-                earnings: 0
-              }
+                name: tx.userName || tx.ign || "Unknown Player",
+                earnings: 0,
+              };
             }
-            userEarnings[uid].earnings += Number(w.amount || 0)
+            userEarnings[uid].earnings += Number(tx.amount || 0);
           }
         }
-      })
+      });
 
       const sorted = Object.values(userEarnings)
         .sort((a, b) => b.earnings - a.earnings)
-        .slice(0, 50) // Get top 50 
+        .slice(0, 50);
 
-      setLeaderboard(sorted)
+      setLeaderboard(sorted);
+    });
+
+    return () => unsub();
+  }, []);
+
+  /* ================= NOTIFICATIONS ================= */
+  const [notifications, setNotifications] = useState([])
+
+  useEffect(() => {
+    if (!auth.currentUser) return
+
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", auth.currentUser.uid),
+      orderBy("createdAt", "desc")
+    )
+
+    const unsub = onSnapshot(q, snap => {
+      setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     })
 
     return () => unsub()
   }, [])
+
+  const markNotificationAsRead = async (notifId) => {
+    await updateDoc(doc(db, "notifications", notifId), { read: true })
+  }
 
   /* ================= MY PAST MATCHES ================= */
   const [myPastMatches, setMyPastMatches] = useState([])
@@ -271,12 +292,6 @@ export default function useLobbyLogic() {
     return () => unsub()
   }, [selectedTournamentId, userStatus])
 
-  /* ================= CLEAN PREVIEW ================= */
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-    }
-  }, [previewUrl])
 
   /* ================= CLOUDINARY UPLOAD ================= */
   const uploadToCloudinary = file => {
@@ -326,8 +341,10 @@ export default function useLobbyLogic() {
       return
     }
 
-    if (!ign || !bgmiUid || !paymentScreenshot || !selectedTournamentId) {
-      setMessage("⚠️ Fill all details")
+    // Validate all players have IGN, UID and Screenshot
+    const isValid = teamPlayers.every(p => p.ign && p.bgmiUid && p.screenshot)
+    if (!isValid || !selectedTournamentId) {
+      setMessage("⚠️ Fill all details & upload all screenshots")
       return
     }
 
@@ -341,7 +358,18 @@ export default function useLobbyLogic() {
 
     try {
       const user = auth.currentUser
-      const screenshotUrl = await uploadToCloudinary(paymentScreenshot)
+      const uploadedPlayers = []
+
+      // Upload each screenshot
+      for (let i = 0; i < teamPlayers.length; i++) {
+        const p = teamPlayers[i]
+        const url = await uploadToCloudinary(p.screenshot)
+        uploadedPlayers.push({
+          ign: p.ign,
+          bgmiUid: p.bgmiUid,
+          screenshotUrl: url
+        })
+      }
 
       await runTransaction(db, async (transaction) => {
         const tournamentRef = doc(db, "tournaments", selectedTournamentId)
@@ -360,12 +388,10 @@ export default function useLobbyLogic() {
           throw new Error("MATCH_FULL")
         }
 
-        // Add player and increment count together
+        // Add team and increment count together
         transaction.set(playerRef, {
-          ign,
-          bgmiUid,
-          email: user.email,
-          paymentScreenshot: screenshotUrl,
+          captainEmail: user.email,
+          players: uploadedPlayers,
           paymentStatus: "pending",
           joinedAt: Date.now(),
           attempts: userStatus === "rejected" ? attempts + 1 : 1,
@@ -373,17 +399,14 @@ export default function useLobbyLogic() {
         }, { merge: true })
 
         transaction.update(tournamentRef, {
-          joinedCount: currentJoined + 1
+          joinedCount: currentJoined + uploadedPlayers.length
         })
       })
 
       setShowJoinModal(false)
       setAlreadyJoined(true)
-      setIgn("")
-      setBgmiUid("")
-      setPaymentScreenshot(null)
-      setPreviewUrl(null)
-      setMessage("✅ Registration submitted! Wait for approval.")
+      setTeamPlayers([])
+      setMessage("✅ Team registered! Wait for approval.")
 
     } catch (err) {
       console.error("Join error:", err)
@@ -409,11 +432,6 @@ export default function useLobbyLogic() {
     uploadProgress,
     isUploading,
 
-    paymentScreenshot,
-    setPaymentScreenshot,
-    previewUrl,
-    setPreviewUrl,
-
     alreadyJoined,
     userStatus,
 
@@ -427,13 +445,13 @@ export default function useLobbyLogic() {
     joining,
     message,
 
-    ign,
-    setIgn,
-    bgmiUid,
-    setBgmiUid,
+    teamPlayers,
+    setTeamPlayers,
 
     confirmJoin,
     leaderboard,
-    myPastMatches
+    myPastMatches,
+    notifications,
+    markNotificationAsRead
   }
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { auth } from "../firebase"
+import { auth, db } from "../firebase"
+import { doc, setDoc } from "firebase/firestore"
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -51,7 +52,21 @@ export default function useAuthLogic() {
 
     setLoading(true)
     try {
-      await createUserWithEmailAndPassword(auth, email, password)
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      const user = userCredential.user
+
+      // Save user to Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        name,
+        email,
+        whatsapp: phone || "",
+        bgmiUid: "",
+        freeFireUid: "",
+        balance: 0,
+        role: "user",
+        createdAt: Date.now()
+      })
+
       success("Account created successfully. Please log in to continue.")
       setMode("login")
     } catch (e) {
@@ -93,39 +108,39 @@ export default function useAuthLogic() {
   }
 
   /* ================= SEND OTP ================= */
- const sendEmailOtp = async () => {
-  if (!email) {
-    error("Please enter your email address first.")
-    return
-  }
-
-  setLoading(true)
-  try {
-    const res = await fetch("/api/send-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email })
-    })
-
-    const text = await res.text()
-
-    let data
-    try {
-      data = JSON.parse(text)
-    } catch {
-      throw new Error(text || "Server error")
+  const sendEmailOtp = async () => {
+    if (!email) {
+      error("Please enter your email address first.")
+      return
     }
 
-    if (!data.success) throw new Error(data.message)
+    setLoading(true)
+    try {
+      const res = await fetch("/api/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      })
 
-    setOtpSent(true)
-    success("OTP sent to your email. Check inbox 📩")
-  } catch (e) {
-    error(e.message || "Failed to send OTP.")
+      const text = await res.text()
+
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch {
+        throw new Error(text || "Server error")
+      }
+
+      if (!data.success) throw new Error(data.message)
+
+      setOtpSent(true)
+      success("OTP sent to your email. Check inbox 📩")
+    } catch (e) {
+      error(e.message || "Failed to send OTP.")
+    }
+
+    setLoading(false)
   }
-
-  setLoading(false)
-}
   /* ================= VERIFY OTP ================= */
   const verifyEmailOtp = async () => {
     if (!otp) {
@@ -156,7 +171,7 @@ export default function useAuthLogic() {
     } catch (e) {
       error(
         e.message ||
-          "Invalid or expired OTP. Please try again."
+        "Invalid or expired OTP. Please try again."
       )
     }
     setLoading(false)

@@ -1,9 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import useLobbyLogic from "../pages/UseLobbyLogic"
 import { auth } from "../firebase"
 import Profile from "../pages/Profile"
-import useNotifications from "../hooks/Usenotifications"
 
 export default function Lobby() {
   const {
@@ -15,14 +14,6 @@ export default function Lobby() {
     setSelectedTournament,
     setSelectedTournamentId,
 
-    uploadProgress,
-    isUploading,
-
-    paymentScreenshot,
-    setPaymentScreenshot,
-    previewUrl,
-    setPreviewUrl,
-
     alreadyJoined,
     userStatus,
 
@@ -33,29 +24,42 @@ export default function Lobby() {
     showJoinModal,
     setShowJoinModal,
 
-    joining,
-    message,
-
-    ign,
-    setIgn,
-    bgmiUid,
-    setBgmiUid,
+    teamPlayers,
+    setTeamPlayers,
 
     confirmJoin,
+    joining,
+    message,
     leaderboard,
-    myPastMatches
+    myPastMatches,
+    notifications,
+    markNotificationAsRead
   } = useLobbyLogic()
+
+  const [showNotifModal, setShowNotifModal] = useState(false)
+  const [showResultsModal, setShowResultsModal] = useState(false)
+  const [selectedMatchResults, setSelectedMatchResults] = useState(null)
 
 
   const gameTabName = gameId ? gameId.toUpperCase() : "MATCHES"
   const [activeTab, setActiveTab] = useState(gameTabName)
-  const {
-    notifications,
-    unreadCount,
-    clearNotifications
-  } = useNotifications()
 
-  const [showNotifications, setShowNotifications] = useState(false)
+  // Initialize teamPlayers when tournament is selected
+  useEffect(() => {
+    if (showJoinModal && selectedTournament) {
+      const mode = (selectedTournament.gameMode || "").toUpperCase()
+      let count = 1
+      if (mode.includes("DUO") || mode.includes("2 VS 2")) count = 2
+      if (mode.includes("SQUAD") || mode.includes("4 VS 4")) count = 4
+
+      setTeamPlayers(Array.from({ length: count }).map(() => ({
+        ign: "",
+        bgmiUid: "",
+        screenshot: null,
+        previewUrl: ""
+      })))
+    }
+  }, [showJoinModal, selectedTournament, setTeamPlayers])
 
   if (loading) {
     return (
@@ -78,62 +82,6 @@ export default function Lobby() {
         </h1>
 
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications(p => !p)}
-              className="relative border border-white/20 rounded-lg p-2"
-            >
-              🔔
-              {unreadCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-xs px-1 rounded-full">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {/* DROPDOWN - RESPONSIVE POSITIONING */}
-            {showNotifications && (
-              <div className="fixed inset-x-4 top-20 md:absolute md:inset-auto md:right-0 md:mt-3 md:w-80 bg-black border border-white/10 rounded-xl shadow-lg z-50">
-                <div className="px-4 py-3 border-b border-white/10 flex justify-between">
-                  <span className="font-semibold">Notifications</span>
-                  <button
-                    onClick={clearNotifications}
-                    className="text-xs text-gray-400 hover:text-white"
-                  >
-                    Clear
-                  </button>
-                </div>
-
-                <div className="max-h-64 overflow-y-auto">
-                  {notifications.length === 0 && (
-                    <p className="text-center text-gray-400 py-6">
-                      No notifications
-                    </p>
-                  )}
-
-                  {notifications.map(n => (
-                    <div
-                      key={n.id}
-                      className="px-4 py-3 border-b border-white/5 text-sm"
-                    >
-                      <p
-                        className={
-                          n.type === "approved"
-                            ? "text-green-400"
-                            : "text-red-400"
-                        }
-                      >
-                        {n.message}
-                      </p>
-                      <span className="text-xs text-gray-500">
-                        {n.time}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
 
 
           <button
@@ -148,14 +96,29 @@ export default function Lobby() {
       {/* ================= CONTENT ================= */}
       <div className="container-responsive py-8 space-y-10">
         {/* WELCOME */}
-        <p className="text-lg">
-          Welcome,{" "}
-          <span className="text-red-500 font-semibold">
-            {auth.currentUser?.displayName ||
-              auth.currentUser?.email ||
-              "Player"}
-          </span>
-        </p>
+        <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
+          <p className="text-lg">
+            Welcome,{" "}
+            <span className="text-red-500 font-semibold">
+              {auth.currentUser?.displayName ||
+                auth.currentUser?.email ||
+                "Player"}
+            </span>
+          </p>
+
+          {/* NOTIFICATION BELL */}
+          <button
+            onClick={() => setShowNotifModal(true)}
+            className="relative p-2 bg-black/40 rounded-xl border border-white/10 hover:border-red-500 transition-all group"
+          >
+            <span className="text-xl">🔔</span>
+            {notifications.filter(n => !n.read).length > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-black text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
+                {notifications.filter(n => !n.read).length}
+              </span>
+            )}
+          </button>
+        </div>
 
         {/* GAME ID */}
         <p className="text-sm tracking-widest text-gray-500">
@@ -282,7 +245,7 @@ export default function Lobby() {
                       </div>
                       <div>
                         <p className="font-bold text-lg">{player.name}</p>
-                        <p className="text-xs text-gray-400 uppercase tracking-wider">{player.email.replace(/(.{2})(.*)(?=@)/, "$1***")}</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">{player.email ? player.email.replace(/(.{2})(.*)(?=@)/, "$1***") : "Player"}</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -308,11 +271,23 @@ export default function Lobby() {
               {alreadyJoined && selectedTournament ? (
                 <div className="bg-black/40 border border-white/10 rounded-xl p-4">
                   <p className="font-semibold">
-                    {selectedTournament.map} • {selectedTournament.type}
+                    {selectedTournament.map} • {selectedTournament.gameMode || selectedTournament.type}
                   </p>
                   <p className="text-sm text-yellow-400 mt-1">
                     Status: {userStatus?.toUpperCase()}
                   </p>
+
+                  {selectedTournament.status === "completed" && (
+                    <button
+                      onClick={() => {
+                        setSelectedMatchResults(selectedTournament)
+                        setShowResultsModal(true)
+                      }}
+                      className="mt-4 w-full py-2 bg-green-500 text-black rounded-lg font-black text-xs uppercase tracking-widest"
+                    >
+                      🏆 VIEW MATCH RESULTS
+                    </button>
+                  )}
 
                   {userStatus === "approved" && (
                     <div className="mt-4 bg-black/50 border border-green-500/30 rounded-lg p-3">
@@ -361,7 +336,7 @@ export default function Lobby() {
                     className="bg-black/40 border border-white/10 rounded-2xl p-6 mb-6"
                   >
                     <h3 className="font-semibold text-lg">
-                      {t.map} • {t.type}
+                      {t.map} • {t.gameMode || t.type}
                     </h3>
 
                     <p className="text-sm text-gray-400 mt-1">
@@ -438,7 +413,7 @@ export default function Lobby() {
                       >
                         <div>
                           <h3 className="font-semibold text-base md:text-lg text-gray-300">
-                            {m.map} • {m.matchType || m.type || "Tournament"}
+                            {m.map} • {m.gameMode || m.matchType || m.type || "Tournament"}
                           </h3>
                           <p className="text-sm text-gray-500 mt-1">
                             Prize Pool: <span className="text-gray-300">₹{m.prize}</span>
@@ -485,7 +460,7 @@ export default function Lobby() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
               transition={{ duration: 0.25 }}
-              className="bg-black w-full max-w-md rounded-2xl border border-white/10 overflow-hidden"
+              className="bg-black w-full max-w-md max-h-[90vh] rounded-2xl border border-white/10 overflow-hidden flex flex-col"
             >
               {/* HEADER */}
               <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center">
@@ -502,88 +477,100 @@ export default function Lobby() {
               </div>
 
               {/* CONTENT */}
-              <div className="p-6 space-y-5">
+              <div className="p-6 space-y-5 flex-1 overflow-y-auto">
 
                 {/* PAYMENT QR */}
-                <div className="bg-white rounded-xl p-4 flex flex-col items-center">
-                  <p className="text-black text-sm font-semibold mb-2">
-                    Pay Entry Fee
-                  </p>
-
-                  <img
-                    src="/qr.jpeg"
-                    alt="Payment QR"
-                    className="w-40 h-40 object-contain"
-                  />
-
-                  <p className="text-xs text-gray-600 mt-2 text-center">
-                    Scan & complete payment, then upload screenshot
-                  </p>
-                </div>
-
-                {/* IGN */}
-                <input
-                  value={ign}
-                  onChange={e => setIgn(e.target.value)}
-                  placeholder="In-Game Name (IGN)"
-                  className="w-full px-4 py-2 rounded-lg bg-black border border-white/20
-                       text-white outline-none focus:border-red-500"
-                />
-
-                {/* GAME UID */}
-                <input
-                  value={bgmiUid}
-                  onChange={e => setBgmiUid(e.target.value)}
-                  placeholder={`${gameId ? gameId.toUpperCase() : "GAME"} UID`}
-                  className="w-full px-4 py-2 rounded-lg bg-black border border-white/20
-                       text-white outline-none focus:border-red-500"
-                />
-
-                {/* SCREENSHOT UPLOAD */}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={e => {
-                    const file = e.target.files[0]
-                    if (!file) return
-                    setPaymentScreenshot(file)
-                    setPreviewUrl(URL.createObjectURL(file))
-                  }}
-                  className="w-full text-sm text-gray-300
-                       file:bg-red-500 file:text-black
-                       file:px-4 file:py-2
-                       file:rounded-lg file:border-0
-                       cursor-pointer"
-                />
-
-                {/* PREVIEW */}
-                {previewUrl && (
-                  <img
-                    src={previewUrl}
-                    alt="Payment Preview"
-                    className="rounded-lg max-h-52 mx-auto"
-                  />
-                )}
-
-                {/* UPLOAD PROGRESS */}
-                {isUploading && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">
-                      Uploading… {uploadProgress}%
+                {selectedTournament?.entryFee > 0 && (
+                  <div className="bg-white rounded-xl p-4 flex flex-col items-center">
+                    <p className="text-black text-sm font-semibold mb-2">
+                      Pay Entry Fee (₹{selectedTournament.entryFee})
                     </p>
-                    <div className="h-1 bg-gray-700 rounded overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${uploadProgress}%` }}
-                        className="h-full bg-red-500"
-                      />
-                    </div>
+
+                    <img
+                      src="/qr.jpeg"
+                      alt="Payment QR"
+                      className="w-28 h-28 object-contain"
+                    />
+
+                    <p className="text-xs text-gray-600 mt-2 text-center pb-2">
+                      Scan & complete payment, then upload screenshot
+                    </p>
                   </div>
                 )}
 
+                {/* TEAM PLAYERS FIELDS */}
+                <div className="space-y-10 overflow-y-auto pr-2 custom-scrollbar pt-4 flex-1">
+                  {teamPlayers.map((p, i) => (
+                    <div key={i} className="p-4 bg-white/5 border border-white/10 rounded-2xl relative mt-4">
+                      <div className="absolute -top-3 left-4 bg-red-500 text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                        Player {i + 1} {i === 0 ? "(Captain)" : ""}
+                      </div>
+
+                      <div className="space-y-4 mt-2">
+                        {/* IGN */}
+                        <input
+                          value={p.ign}
+                          onChange={e => {
+                            const newPlayers = [...teamPlayers]
+                            newPlayers[i].ign = e.target.value
+                            setTeamPlayers(newPlayers)
+                          }}
+                          placeholder="In-Game Name (IGN)"
+                          className="w-full px-4 py-2 rounded-lg bg-black border border-white/20
+                               text-white outline-none focus:border-red-500 text-sm"
+                        />
+
+                        {/* UID */}
+                        <input
+                          value={p.bgmiUid}
+                          onChange={e => {
+                            const newPlayers = [...teamPlayers]
+                            newPlayers[i].bgmiUid = e.target.value
+                            setTeamPlayers(newPlayers)
+                          }}
+                          placeholder="Game UID"
+                          className="w-full px-4 py-2 rounded-lg bg-black border border-white/20
+                               text-white outline-none focus:border-red-500 text-sm"
+                        />
+
+                        {/* SCREENSHOT */}
+                        <div className="space-y-2">
+                          <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block ml-1">
+                            Screenshot (Profile/Payment)
+                          </label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={e => {
+                              const file = e.target.files[0]
+                              if (!file) return
+                              const newPlayers = [...teamPlayers]
+                              newPlayers[i].screenshot = file
+                              newPlayers[i].previewUrl = URL.createObjectURL(file)
+                              setTeamPlayers(newPlayers)
+                            }}
+                            className="w-full text-[10px] text-gray-400
+                                 file:bg-white/10 file:text-white
+                                 file:px-3 file:py-1
+                                 file:rounded-md file:border-0
+                                 cursor-pointer"
+                          />
+                          {p.previewUrl && (
+                            <img
+                              src={p.previewUrl}
+                              alt={`Preview ${i + 1}`}
+                              className="rounded-lg h-20 w-full object-cover border border-white/10 mt-2"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 {/* ERROR / MESSAGE */}
                 {message && (
-                  <p className="text-center text-sm text-red-400">
+                  <p className="text-center text-sm font-bold text-red-500 bg-red-500/10 py-3 rounded-xl border border-red-500/20">
                     {message}
                   </p>
                 )}
@@ -592,12 +579,13 @@ export default function Lobby() {
                 <div className="space-y-3 pt-2">
                   <button
                     onClick={confirmJoin}
-                    disabled={joining || !paymentScreenshot}
-                    className="w-full py-3 rounded-xl bg-red-500 text-black
-                         font-heading tracking-widest
+                    disabled={joining}
+                    className="w-full py-4 rounded-xl bg-red-500 text-black
+                         font-black uppercase tracking-widest text-sm
+                         shadow-[0_0_20px_rgba(239,68,68,0.3)]
                          disabled:opacity-40"
                   >
-                    {joining ? "PROCESSING..." : "CONFIRM JOIN"}
+                    {joining ? "UPLOADING ALL DETAILS..." : "CONFIRM TEAM REGISTRATION"}
                   </button>
 
                   <button
@@ -611,6 +599,100 @@ export default function Lobby() {
             </motion.div>
           </motion.div>
         )}
+        {/* ================= NOTIFICATION MODAL ================= */}
+        {showNotifModal && (
+          <div className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center px-4">
+            <div className="bg-[#0b0b0b] border border-white/10 rounded-3xl w-full max-w-md overflow-hidden max-h-[80vh] flex flex-col shadow-[0_0_50px_rgba(255,255,255,0.05)]">
+              <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                <h2 className="font-heading text-lg tracking-widest text-red-500">NOTIFICATIONS</h2>
+                <button onClick={() => setShowNotifModal(false)} className="text-gray-400 text-xl font-light">✕</button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {notifications.length === 0 ? (
+                  <p className="text-center text-gray-500 py-10 italic">No notifications yet</p>
+                ) : (
+                  notifications.map(n => (
+                    <div
+                      key={n.id}
+                      onClick={() => markNotificationAsRead(n.id)}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${n.read ? 'bg-white/5 border-white/10 opacity-60' : 'bg-red-500/10 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]'}`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <h4 className="font-bold text-sm text-white">{n.title}</h4>
+                        {!n.read && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
+                      </div>
+                      <p className="text-xs text-gray-400 leading-relaxed">{n.message}</p>
+                      <p className="text-[9px] text-gray-600 mt-2 uppercase tracking-widest font-bold">{new Date(n.createdAt).toLocaleString()}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MATCH RESULTS MODAL ================= */}
+        {showResultsModal && selectedMatchResults && (
+          <div className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center px-4">
+            <div className="bg-[#0b0b0b] border border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col shadow-[0_0_50px_rgba(34,197,94,0.1)]">
+              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-green-500/10 to-transparent">
+                <div>
+                  <h2 className="font-heading text-lg tracking-widest text-green-500 uppercase">🏆 {selectedMatchResults.map} RESULTS</h2>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black mt-1">{selectedMatchResults.gameMode}</p>
+                </div>
+                <button onClick={() => setShowResultsModal(false)} className="bg-white/5 hover:bg-white/10 w-10 h-10 rounded-full flex items-center justify-center transition-all">✕</button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                {/* PROOF SCREENSHOT */}
+                {selectedMatchResults.resultsProofUrl ? (
+                  <div className="space-y-3">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black flex items-center gap-2">
+                      <span className="w-4 h-[1px] bg-gray-500"></span> MATCH PROOF SCREENSHOT
+                    </p>
+                    <a href={selectedMatchResults.resultsProofUrl} target="_blank" rel="noreferrer" className="block relative group rounded-2xl overflow-hidden border border-white/10">
+                      <img src={selectedMatchResults.resultsProofUrl} alt="Results Proof" className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <span className="bg-white text-black px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest">View Full Size 🔍</span>
+                      </div>
+                    </a>
+                  </div>
+                ) : (
+                  <div className="p-10 border border-dashed border-white/10 rounded-2xl text-center">
+                    <p className="text-gray-500 italic text-sm">No official proof image uploaded yet.</p>
+                  </div>
+                )}
+
+                {/* WINNERS TABLE */}
+                <div className="space-y-4">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black flex items-center gap-2">
+                    <span className="w-4 h-[1px] bg-gray-500"></span> STANDINGS & WINNINGS
+                  </p>
+                  <div className="grid gap-3">
+                    {(selectedMatchResults.results || []).map((res, i) => (
+                      <div key={i} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${res.userId === auth.currentUser?.uid ? 'bg-green-500/10 border-green-500/30' : 'bg-white/5 border-white/10'}`}>
+                        <div className="flex items-center gap-4">
+                          <span className={`font-black text-xl w-8 text-center ${res.rank === 1 ? 'text-yellow-400' : res.rank === 2 ? 'text-gray-300' : res.rank === 3 ? 'text-amber-600' : 'text-gray-500'}`}>
+                            #{res.rank}
+                          </span>
+                          <div>
+                            <p className="font-bold text-white tracking-wide">{res.ign}</p>
+                            <div className="flex gap-3 text-[10px] mt-1 font-black">
+                              <span className="text-red-500 uppercase">KILLS: {res.kills}</span>
+                              <span className="text-green-500 uppercase">WON: ₹{res.prizeWon}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {res.rank === 1 && <span className="text-2xl animate-bounce">👑</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </AnimatePresence>
 
     </motion.div>

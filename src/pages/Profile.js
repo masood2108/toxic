@@ -297,7 +297,7 @@ export default function Profile() {
               className="bg-white/5 border border-white/10 rounded-xl p-4 flex justify-between items-center"
             >
               <div>
-                <p className="font-semibold text-sm capitalize">{t.description || t.category?.replace('_', ' ')}</p>
+                <p className="font-semibold text-sm capitalize">{(t.description || t.category || "Transaction").replace('_', ' ')}</p>
                 <p className="text-[10px] text-gray-400">
                   {new Date(t.timestamp).toLocaleString()}
                 </p>

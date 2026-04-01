@@ -231,52 +231,102 @@ export default function AdminGameDashboard() {
               {d.players.map(p => (
                 <div
                   key={p.id}
-                  className="bg-black/50 border border-white/10 rounded-2xl p-6 mb-4"
+                  className="bg-black/50 border border-white/10 rounded-2xl p-6 mb-8 shadow-xl"
                 >
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mb-6">
                     <div>
-                      <p className="font-semibold">{p.ign}</p>
-                      <p className="text-xs text-gray-400">{p.email}</p>
+                      <p className="text-gray-500 text-[10px] uppercase tracking-widest font-black mb-1">Squad Lead / Captain</p>
+                      <p className="text-lg font-bold text-white">{p.captainEmail || p.email || "Unknown User"}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {p.joinedAt ? new Date(p.joinedAt).toLocaleString() : "Unknown date"}
+                      </p>
                     </div>
 
                     <span
-                      className={`px-4 py-1 rounded-full text-xs font-bold
+                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest
                         ${p.paymentStatus === "approved"
-                          ? "bg-green-500/20 text-green-400"
+                          ? "bg-green-500 text-black"
                           : p.paymentStatus === "rejected"
-                            ? "bg-red-500/20 text-red-400"
-                            : "bg-yellow-500/20 text-yellow-400"
+                            ? "bg-red-500 text-black"
+                            : "bg-yellow-500 text-black"
                         }`}
                     >
                       {p.paymentStatus?.toUpperCase()}
                     </span>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                  {/* TEAM MEMBERS LIST */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+                    {(p.players || []).map((player, idx) => (
+                      <div key={idx} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-4 hover:border-red-500/30 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-red-400 font-bold text-lg">{player.ign}</p>
+                            <p className="text-xs text-gray-500 font-mono mt-1">UID: {player.bgmiUid}</p>
+                          </div>
+                          <span className="bg-white/5 text-[10px] px-2 py-1 rounded-md text-gray-400 font-black">
+                            MEMBER {idx + 1}
+                          </span>
+                        </div>
+
+                        {player.screenshotUrl && (
+                          <div className="relative group overflow-hidden rounded-xl h-48 bg-black border border-white/10">
+                            <img
+                              src={player.screenshotUrl}
+                              alt={`Screenshot ${idx + 1}`}
+                              className="w-full h-full object-contain cursor-zoom-in group-hover:scale-105 transition-transform duration-300"
+                              onClick={() => d.setZoomImage(player.screenshotUrl)}
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                              <span className="text-xs font-bold text-white uppercase tracking-widest">Click to Zoom</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4 mt-8 pt-6 border-t border-white/10">
                     <button
                       onClick={() => d.updateStatus(p.id, "approved")}
                       disabled={p.paymentStatus === "approved"}
-                      className="px-5 py-2 rounded-lg bg-green-500 text-black font-bold"
+                      className="flex-1 py-4 rounded-xl bg-green-500 text-black font-black uppercase tracking-wider hover:bg-green-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                      APPROVE
+                      APPROVE TEAM
                     </button>
 
                     <button
                       onClick={() => d.updateStatus(p.id, "rejected")}
                       disabled={p.paymentStatus === "rejected"}
-                      className="px-5 py-2 rounded-lg bg-red-500 text-black font-bold"
+                      className="flex-1 py-4 rounded-xl bg-red-500 text-black font-black uppercase tracking-wider hover:bg-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                      REJECT
+                      REJECT TEAM
                     </button>
                   </div>
 
-                  {p.paymentScreenshot && (
-                    <img
-                      src={p.paymentScreenshot}
-                      alt="Payment screenshot"
-                      className="mt-4 w-60 rounded-xl cursor-zoom-in hover:scale-105 transition"
-                      onClick={() => d.setZoomImage(p.paymentScreenshot)}
-                    />
+                  {/* 🏆 QUICK RANK ASSIGNMENT */}
+                  {p.paymentStatus === "approved" && (
+                    <div className="mt-6 pt-6 border-t border-white/10 flex flex-wrap items-center gap-4">
+                      <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Quick Award:</span>
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 4, 5].map(rank => (
+                          <button
+                            key={rank}
+                            onClick={() => d.addPlayerToResults(p, rank.toString())}
+                            className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 font-black hover:bg-yellow-500 hover:text-black transition-all flex items-center justify-center shadow-lg active:scale-95"
+                            title={`Assign Rank ${rank}`}
+                          >
+                            {rank}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => d.addPlayerToResults(p)}
+                          className="px-4 h-10 rounded-xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all"
+                        >
+                          + Add Winner
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
@@ -289,6 +339,19 @@ export default function AdminGameDashboard() {
                 <p className="text-sm text-gray-400 mb-8 font-medium">
                   Add the top players here to officially record their Rank, Kills, and Prize Won. Once published, this match will be marked as COMPLETED and prizes will show on their profile.
                 </p>
+
+                <div className="flex flex-col lg:flex-row gap-6 items-end mb-10 p-6 bg-white/5 border border-white/10 rounded-2xl">
+                  <div className="flex-1 space-y-2">
+                    <label className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] ml-2">Final Match Result Screenshot (Proof)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={e => d.setResultsProof(e.target.files[0])}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-400 file:bg-red-500 file:text-black file:border-0 file:rounded-lg file:px-3 file:py-1 file:font-black file:text-[10px] file:uppercase file:tracking-widest cursor-pointer hover:border-red-500/50 transition-all"
+                    />
+                  </div>
+                  {d.isUploadingProof && <span className="text-xs text-yellow-500 font-bold animate-pulse mb-4">Uploading Proof...</span>}
+                </div>
 
                 {d.matchResults.map((res, index) => (
                   <div key={index} className="flex flex-col lg:flex-row gap-5 mb-5 bg-white/5 p-6 rounded-2xl border border-white/10 items-end hover:border-red-500/30 transition-colors">
@@ -305,7 +368,7 @@ export default function AdminGameDashboard() {
                       >
                         <option value="">-- Choose Player --</option>
                         {d.players.filter(p => p.paymentStatus === "approved").map(p => (
-                          <option key={p.id} value={p.id}>{p.ign} ({p.uid?.slice(0, 6) || "player"})</option>
+                          <option key={p.id} value={p.id}>{p.ign} ({p.uid?.slice(0, 6) || "team"})</option>
                         ))}
                       </select>
                     </div>

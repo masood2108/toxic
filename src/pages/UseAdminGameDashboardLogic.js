@@ -71,6 +71,9 @@ export default function useAdminGameDashboardLogic() {
 
   /* ================= PUBLISH RESULTS STATE ================= */
   const [matchResults, setMatchResults] = useState([])
+  const [resultsProof, setResultsProof] = useState(null)
+  const [resultsProofUrl, setResultsProofUrl] = useState("")
+  const [isUploadingProof, setIsUploadingProof] = useState(false)
 
   /* ================= FORM STATE ================= */
   const [matchType, setMatchType] = useState("Tournament")
@@ -403,6 +406,8 @@ export default function useAdminGameDashboardLogic() {
     setRoomId("")
     setRoomPassword("")
     setMatchResults([])
+    setResultsProof(null)
+    setResultsProofUrl("")
   }
 
   const createMatch = async () => {
@@ -427,6 +432,9 @@ export default function useAdminGameDashboardLogic() {
     resetForm()
   }
   const updateMatch = async () => {
+    const prevRoomId = selectedTournament.roomId
+    const prevRoomPass = selectedTournament.roomPassword
+
     await updateDoc(doc(db, "tournaments", selectedTournament.id), {
       matchType,
       matchName,
@@ -439,6 +447,24 @@ export default function useAdminGameDashboardLogic() {
       roomPassword,
       startTime: `${date} ${time}`
     })
+
+    // Notify all approved players if Room Details updated
+    if ((roomId && roomId !== prevRoomId) || (roomPassword && roomPassword !== prevRoomPass)) {
+      players.forEach(p => {
+        if (p.paymentStatus === "approved") {
+          setDoc(doc(collection(db, "notifications")), {
+            userId: p.id,
+            title: "🎮 Match Room Details!",
+            message: `Room details for ${matchName} are now available! ID: ${roomId}`,
+            type: "room_update",
+            matchId: selectedTournament.id,
+            createdAt: Date.now(),
+            read: false
+          })
+        }
+      })
+    }
+
     resetForm()
   }
 
@@ -463,6 +489,21 @@ export default function useAdminGameDashboardLogic() {
       doc(db, "tournamentPlayers", selectedTournament.id, "players", uid),
       { paymentStatus: status }
     )
+
+    // Notify user of status update
+    if (status === "approved" || status === "rejected") {
+      await setDoc(doc(collection(db, "notifications")), {
+        userId: uid,
+        title: status === "approved" ? "✅ Registration Approved!" : "❌ Registration Rejected",
+        message: status === "approved"
+          ? `Your registration for ${selectedTournament.matchName} has been accepted.`
+          : `Your registration for ${selectedTournament.matchName} was rejected. Please check requirements.`,
+        type: "payment_status",
+        matchId: selectedTournament.id,
+        createdAt: Date.now(),
+        read: false
+      })
+    }
   }
 
   const sendBroadcast = async () => {
@@ -481,6 +522,29 @@ export default function useAdminGameDashboardLogic() {
       ...prev,
       { userId: "", ign: "", rank: "", kills: "", prizeWon: "" }
     ])
+  }
+
+  const addPlayerToResults = (p, rank = "") => {
+    setMatchResults(prev => {
+      // Avoid duplicates
+      if (prev.find(r => r.userId === p.id)) return prev
+
+      // Concatenate all team member IGNs for display
+      const teamNames = p.players && p.players.length > 0
+        ? p.players.map(pl => pl.ign).join(", ")
+        : (p.ign || "Unknown Player")
+
+      return [
+        ...prev,
+        {
+          userId: p.id,
+          ign: teamNames,
+          rank: rank || (prev.length + 1).toString(),
+          kills: "0",
+          prizeWon: "0"
+        }
+      ]
+    })
   }
 
   const updateResultRow = (index, field, value) => {
@@ -503,8 +567,32 @@ export default function useAdminGameDashboardLogic() {
     const batch = writeBatch(db)
     const tid = selectedTournament.id
 
+    let finalProofUrl = resultsProofUrl
+    if (resultsProof) {
+      setIsUploadingProof(true)
+      try {
+        const formData = new FormData()
+        formData.append("file", resultsProof)
+        formData.append("upload_preset", "99dxxxx")
+
+        const res = await fetch("https://api.cloudinary.com/v1_1/dvic2uies/image/upload", {
+          method: "POST",
+          body: formData
+        }).then(r => r.json())
+
+        if (res.secure_url) {
+          finalProofUrl = res.secure_url
+          setResultsProofUrl(res.secure_url)
+        }
+      } catch (err) {
+        console.error("Proof upload error:", err)
+      }
+      setIsUploadingProof(false)
+    }
+
     const results = matchResults.map(r => ({
-      ...r,
+      userId: r.userId || "",
+      ign: r.ign || "Unknown Player",
       rank: Number(r.rank) || 0,
       kills: Number(r.kills) || 0,
       prizeWon: Number(r.prizeWon) || 0
@@ -514,7 +602,8 @@ export default function useAdminGameDashboardLogic() {
     const tournamentRef = doc(db, "tournaments", tid)
     batch.update(tournamentRef, {
       status: "completed",
-      results
+      results,
+      resultsProofUrl: finalProofUrl
     })
 
     // 2. Credit winners and record transactions
@@ -531,6 +620,7 @@ export default function useAdminGameDashboardLogic() {
         // Record transaction
         batch.set(txRef, {
           userId: r.userId,
+          userName: r.ign || "Unknown Player",
           amount: r.prizeWon,
           type: "credit",
           category: "match_prize",
@@ -607,7 +697,12 @@ export default function useAdminGameDashboardLogic() {
 
     // Publish Results
     matchResults,
+    resultsProof,
+    setResultsProof,
+    resultsProofUrl,
+    isUploadingProof,
     addResultRow,
+    addPlayerToResults,
     updateResultRow,
     removeResultRow,
     publishResults,
