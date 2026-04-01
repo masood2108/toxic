@@ -637,41 +637,45 @@ export default function Lobby() {
                                text-white outline-none focus:border-red-500 text-sm"
                         />
 
-                        {/* SCREENSHOT — only for Player 1 (Captain) */}
-                        {i === 0 && (
-                          <div className="space-y-2">
-                            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block ml-1">
-                              Payment Screenshot
-                            </label>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={e => {
-                                const file = e.target.files[0]
-                                if (!file) return
-                                const newPlayers = [...teamPlayers]
-                                newPlayers[i].screenshot = file
-                                newPlayers[i].previewUrl = URL.createObjectURL(file)
-                                setTeamPlayers(newPlayers)
-                              }}
-                              className="w-full text-[10px] text-gray-400
-                                 file:bg-white/10 file:text-white
-                                 file:px-3 file:py-1
-                                 file:rounded-md file:border-0
-                                 cursor-pointer"
-                            />
-                            {p.previewUrl && (
-                              <img
-                                src={p.previewUrl}
-                                alt={`Preview ${i + 1}`}
-                                className="rounded-lg h-20 w-full object-cover border border-white/10 mt-2"
-                              />
-                            )}
-                          </div>
-                        )}
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* PAYMENT SCREENSHOT — separate section after all players */}
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl relative mt-6">
+                  <div className="absolute -top-3 left-4 bg-yellow-500 text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                    💳 Payment Proof
+                  </div>
+                  <div className="space-y-2 mt-2">
+                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block ml-1">
+                      Upload Payment Screenshot
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files[0]
+                        if (!file) return
+                        const newPlayers = [...teamPlayers]
+                        newPlayers[0].screenshot = file
+                        newPlayers[0].previewUrl = URL.createObjectURL(file)
+                        setTeamPlayers(newPlayers)
+                      }}
+                      className="w-full text-[10px] text-gray-400
+                           file:bg-white/10 file:text-white
+                           file:px-3 file:py-1
+                           file:rounded-md file:border-0
+                           cursor-pointer"
+                    />
+                    {teamPlayers[0]?.previewUrl && (
+                      <img
+                        src={teamPlayers[0].previewUrl}
+                        alt="Payment Preview"
+                        className="rounded-lg h-24 w-full object-cover border border-white/10 mt-2"
+                      />
+                    )}
+                  </div>
                 </div>
 
                 {/* ERROR / MESSAGE */}
