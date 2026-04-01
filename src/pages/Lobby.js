@@ -43,6 +43,8 @@ export default function Lobby() {
   const [showNotifModal, setShowNotifModal] = useState(false)
   const [showResultsModal, setShowResultsModal] = useState(false)
   const [selectedMatchResults, setSelectedMatchResults] = useState(null)
+  const [teamName, setTeamName] = useState("")
+  const [transactionId, setTransactionId] = useState("")
 
 
   const gameTabName = gameId ? gameId.toUpperCase() : "MATCHES"
@@ -161,7 +163,7 @@ export default function Lobby() {
         <div className="tabs-scroll">
           {[
             { name: gameTabName, icon: "🎮" },
-            { name: "LIVE/CLOSED", icon: "🔴" },
+            { name: "LIVE & DONE", icon: "🔴" },
             { name: "LEADERBOARD", icon: "🏆" },
             { name: "RULES", icon: "📜" },
             { name: "PROFILE", icon: "👤" }
@@ -179,6 +181,104 @@ export default function Lobby() {
             </button>
           ))}
         </div>
+
+        {/* ================= LIVE & DONE ================= */}
+        {activeTab === "LIVE & DONE" && (
+          <div className="space-y-10">
+            {/* LIVE MATCHES */}
+            <div>
+              <h2 className="text-xl md:text-2xl font-heading font-bold mb-6 flex items-center gap-3">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+                LIVE MATCHES
+              </h2>
+
+              {tournaments.filter(t => t.status === "live").length === 0 ? (
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center">
+                  <p className="text-gray-500 text-sm">No live matches right now</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {tournaments.filter(t => t.status === "live").map(t => (
+                    <motion.div
+                      key={t.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-black/60 border-2 border-green-500/40 rounded-2xl p-5 shadow-[0_0_20px_rgba(34,197,94,0.1)] hover:shadow-[0_0_30px_rgba(34,197,94,0.2)] transition-all"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-heading text-lg text-white tracking-wide">{t.map} • {t.gameMode || t.type}</h3>
+                          <div className="flex gap-4 mt-2">
+                            <p className="text-xs text-gray-400">Entry: <span className="text-white font-bold">₹{t.entryFee}</span></p>
+                            <p className="text-xs text-gray-400">Prize: <span className="text-green-400 font-bold">₹{t.prize}</span></p>
+                            <p className="text-xs text-gray-400">Players: <span className="text-white font-bold">{t.joinedCount}/{t.maxPlayers}</span></p>
+                          </div>
+                        </div>
+                        <span className="bg-green-500 text-black px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">
+                          🔴 LIVE NOW
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* COMPLETED MATCHES */}
+            <div>
+              <h2 className="text-xl md:text-2xl font-heading font-bold mb-6 flex items-center gap-3 text-gray-400">
+                ✅ COMPLETED MATCHES
+              </h2>
+
+              {tournaments.filter(t => t.status === "completed").length === 0 ? (
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center">
+                  <p className="text-gray-500 text-sm">No completed matches yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {tournaments.filter(t => t.status === "completed").map(t => (
+                    <motion.div
+                      key={t.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-black/40 border border-white/10 rounded-2xl p-5 hover:bg-black/60 transition-all"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-heading text-lg text-gray-300 tracking-wide">{t.map} • {t.gameMode || t.type}</h3>
+                          <div className="flex gap-4 mt-2">
+                            <p className="text-xs text-gray-500">Entry: <span className="text-gray-300">₹{t.entryFee}</span></p>
+                            <p className="text-xs text-gray-500">Prize: <span className="text-green-400">₹{t.prize}</span></p>
+                            <p className="text-xs text-gray-500">Players: <span className="text-gray-300">{t.joinedCount}/{t.maxPlayers}</span></p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <span className="bg-gray-800 text-gray-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                            COMPLETED
+                          </span>
+                          {t.results && t.results.length > 0 && (
+                            <button
+                              onClick={() => {
+                                setSelectedMatchResults(t)
+                                setShowResultsModal(true)
+                              }}
+                              className="bg-green-500/10 text-green-500 border border-green-500/30 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-500 hover:text-black transition-all"
+                            >
+                              🏆 VIEW RESULTS
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ================= RULES ================= */}
         {activeTab === "RULES" && (
@@ -602,6 +702,24 @@ export default function Lobby() {
                   </div>
                 )}
 
+                {/* TEAM NAME (DUO / SQUAD only) */}
+                {teamPlayers.length > 1 && (
+                  <div className="p-4 bg-white/5 border border-white/10 rounded-2xl relative mt-4">
+                    <div className="absolute -top-3 left-4 bg-purple-500 text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                      👥 Team Info
+                    </div>
+                    <div className="mt-2">
+                      <input
+                        value={teamName}
+                        onChange={e => setTeamName(e.target.value)}
+                        placeholder="Enter Team Name"
+                        className="w-full px-4 py-2 rounded-lg bg-black border border-white/20
+                             text-white outline-none focus:border-purple-500 text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* TEAM PLAYERS FIELDS */}
                 <div className="space-y-10 overflow-y-auto pr-2 custom-scrollbar pt-4 flex-1">
                   {teamPlayers.map((p, i) => (
@@ -675,6 +793,17 @@ export default function Lobby() {
                         className="rounded-lg h-24 w-full object-cover border border-white/10 mt-2"
                       />
                     )}
+                    {/* TRANSACTION ID */}
+                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block ml-1 mt-3">
+                      Transaction
+                    </label>
+                    <input
+                      value={transactionId}
+                      onChange={e => setTransactionId(e.target.value)}
+                      placeholder="Enter Transaction ID"
+                      className="w-full px-4 py-2 rounded-lg bg-black border border-white/20
+                           text-white outline-none focus:border-yellow-500 text-sm"
+                    />
                   </div>
                 </div>
 
@@ -688,7 +817,7 @@ export default function Lobby() {
                 {/* ACTION BUTTONS */}
                 <div className="space-y-3 pt-2">
                   <button
-                    onClick={confirmJoin}
+                    onClick={() => confirmJoin({ teamName, transactionId })}
                     disabled={joining}
                     className="w-full py-4 rounded-xl bg-red-500 text-black
                          font-black uppercase tracking-widest text-sm

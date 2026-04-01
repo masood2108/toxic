@@ -372,7 +372,7 @@ export default function useLobbyLogic() {
   }
 
   /* ================= CONFIRM JOIN ================= */
-  const confirmJoin = async () => {
+  const confirmJoin = async ({ teamName = "", transactionId = "" } = {}) => {
     if (!auth.currentUser) {
       setMessage("⚠️ Please login first")
       return
@@ -383,6 +383,12 @@ export default function useLobbyLogic() {
     const captainHasScreenshot = teamPlayers[0]?.screenshot
     if (!allHaveBasics || !captainHasScreenshot || !selectedTournamentId) {
       setMessage("⚠️ Fill all details & upload payment screenshot")
+      return
+    }
+
+    // Validate team name for DUO/SQUAD
+    if (teamPlayers.length > 1 && !teamName.trim()) {
+      setMessage("⚠️ Please enter a team name")
       return
     }
 
@@ -430,6 +436,8 @@ export default function useLobbyLogic() {
         // Add team and increment count together
         transaction.set(playerRef, {
           captainEmail: user.email,
+          ...(teamName.trim() ? { teamName: teamName.trim() } : {}),
+          ...(transactionId.trim() ? { transactionId: transactionId.trim() } : {}),
           players: uploadedPlayers,
           paymentStatus: "pending",
           joinedAt: Date.now(),
