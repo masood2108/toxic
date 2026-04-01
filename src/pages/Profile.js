@@ -9,7 +9,9 @@ import {
   setDoc,
   query,
   where,
-  orderBy
+  orderBy,
+  runTransaction,
+  serverTimestamp
 } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
 import AISupportChat from "../components/AISupportChat"
@@ -57,20 +59,64 @@ export default function Profile() {
       return
     }
 
-    await setDoc(doc(collection(db, "withdrawals")), {
-      userId: user.uid,
-      name: data.name,
-      email: data.email,
-      amount: Number(withdrawAmount),
-      method: "upi",
-      upiId,
-      status: "pending",
-      requestedAt: Date.now()
-    })
+    const amountNum = Number(withdrawAmount)
+    if (isNaN(amountNum) || amountNum <= 0) {
+      alert("Invalid amount")
+      return
+    }
 
-    setWithdrawAmount("")
-    setUpiId("")
-    setWithdrawOpen(false)
+    try {
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, "users", user.uid)
+        const userSnap = await transaction.get(userRef)
+
+        if (!userSnap.exists()) throw new Error("User not found")
+        const currentBalance = Number(userSnap.data().balance || 0)
+
+        if (currentBalance < amountNum) {
+          throw new Error("Insufficient balance")
+        }
+
+        // 1. Subtract balance
+        transaction.update(userRef, {
+          balance: currentBalance - amountNum
+        })
+
+        // 2. Add withdrawal document
+        const withdrawRef = doc(collection(db, "withdrawals"))
+        transaction.set(withdrawRef, {
+          userId: user.uid,
+          name: data.name,
+          email: data.email,
+          amount: amountNum,
+          method: "upi",
+          upiId,
+          status: "pending",
+          requestedAt: Date.now()
+        })
+
+        // 3. Add transaction log
+        const txRef = doc(collection(db, "transactions"))
+        transaction.set(txRef, {
+          userId: user.uid,
+          userName: data.name,
+          amount: -amountNum,
+          type: "debit",
+          category: "withdraw_request",
+          status: "pending",
+          timestamp: serverTimestamp(),
+          description: `Withdrawal request for ₹${amountNum}`
+        })
+      })
+
+      setWithdrawAmount("")
+      setUpiId("")
+      setWithdrawOpen(false)
+      alert("Withdrawal request submitted successfully!")
+    } catch (err) {
+      console.error("Withdraw error:", err)
+      alert("Error: " + err)
+    }
   }
 
   /* ================= PAGE TITLE ================= */
@@ -290,21 +336,36 @@ export default function Profile() {
           </p>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {transactions.map(t => (
             <div
               key={t.id}
-              className="bg-white/5 border border-white/10 rounded-xl p-4 flex justify-between items-center"
+              className="bg-white/5 border border-white/10 rounded-2xl p-4 flex justify-between items-center hover:border-toxic/30 transition-colors"
             >
-              <div>
-                <p className="font-semibold text-sm capitalize">{(t.description || t.category || "Transaction").replace('_', ' ')}</p>
-                <p className="text-[10px] text-gray-400">
-                  {new Date(t.timestamp).toLocaleString()}
-                </p>
+              <div className="flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${t.amount > 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
+                  }`}>
+                  {t.category === 'match_prize' ? '🏆' : t.category === 'withdraw_request' ? '📤' : t.category === 'withdraw_refund' ? '🔄' : '💰'}
+                </div>
+                <div>
+                  <p className="font-bold text-sm tracking-wide uppercase">
+                    {(t.category || "Transaction").replace(/_/g, ' ')}
+                  </p>
+                  <p className="text-[10px] text-gray-500 font-medium">
+                    {t.timestamp?.seconds
+                      ? new Date(t.timestamp.seconds * 1000).toLocaleString()
+                      : new Date(t.timestamp).toLocaleString()}
+                  </p>
+                </div>
               </div>
-              <p className={`font-bold ${t.type === 'credit' ? 'text-green-400' : 'text-red-400'}`}>
-                {t.type === 'credit' ? '+' : '-'}₹{t.amount}
-              </p>
+              <div className="text-right">
+                <p className={`font-black text-lg ${t.amount > 0 ? 'text-green-400' : 'text-white'}`}>
+                  {t.amount > 0 ? '+' : ''}{t.amount}
+                </p>
+                {t.status === 'pending' && (
+                  <span className="text-[9px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded-md font-black uppercase tracking-tighter">Pending</span>
+                )}
+              </div>
             </div>
           ))}
         </div>

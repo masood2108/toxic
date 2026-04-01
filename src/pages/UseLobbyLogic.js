@@ -190,7 +190,7 @@ export default function useLobbyLogic() {
       matchesPlayed: myPastMatches.length,
       totalWinnings: totalWon
     })
-  }, [auth.currentUser, myPastMatches])
+  }, [myPastMatches])
 
   /* ================= AUTO DETECT JOINED MATCH (STEP 1) ================= */
   useEffect(() => {

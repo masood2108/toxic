@@ -14,6 +14,7 @@ import {
   orderBy,
   getDoc,
   deleteDoc,
+  runTransaction,
   writeBatch,
   increment
 } from "firebase/firestore"
@@ -141,11 +142,47 @@ export default function useAdminGameDashboardLogic() {
   }, [gameKey])
 
   const updateWithdrawStatus = async (id, status) => {
-    await updateDoc(doc(db, "withdrawals", id), {
-      status,
-      processedAt: Date.now(),
-      processedBy: auth.currentUser.email
-    })
+    try {
+      await runTransaction(db, async (transaction) => {
+        const withdrawRef = doc(db, "withdrawals", id)
+        const withdrawSnap = await transaction.get(withdrawRef)
+
+        if (!withdrawSnap.exists()) throw new Error("Withdrawal not found")
+        const withdrawData = withdrawSnap.data()
+
+        // 1. Update the withdrawal status
+        transaction.update(withdrawRef, {
+          status,
+          processedAt: Date.now(),
+          processedBy: auth.currentUser.email
+        })
+
+        // 2. If rejected, refund the user
+        if (status === "rejected") {
+          const userRef = doc(db, "users", withdrawData.userId)
+          transaction.update(userRef, {
+            balance: increment(withdrawData.amount)
+          })
+
+          // 3. Log refund transaction
+          const txRef = doc(collection(db, "transactions"))
+          transaction.set(txRef, {
+            userId: withdrawData.userId,
+            userName: withdrawData.name,
+            amount: Number(withdrawData.amount),
+            type: "credit",
+            category: "withdraw_refund",
+            status: "completed",
+            timestamp: serverTimestamp(),
+            description: `Refund for rejected withdrawal (₹${withdrawData.amount})`
+          })
+        }
+      })
+      alert(`Withdrawal marked as ${status}`)
+    } catch (err) {
+      console.error("Update withdraw status error:", err)
+      alert("Error: " + err)
+    }
   }
   /* ================= ANALYTICS ================= */
   const [analytics, setAnalytics] = useState({
