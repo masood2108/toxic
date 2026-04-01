@@ -56,11 +56,10 @@ export default function Lobby() {
       if (mode.includes("DUO") || mode.includes("2 VS 2")) count = 2
       if (mode.includes("SQUAD") || mode.includes("4 VS 4")) count = 4
 
-      setTeamPlayers(Array.from({ length: count }).map(() => ({
+      setTeamPlayers(Array.from({ length: count }).map((_, idx) => ({
         ign: "",
         bgmiUid: "",
-        screenshot: null,
-        previewUrl: ""
+        ...(idx === 0 ? { screenshot: null, previewUrl: "" } : {})
       })))
     }
   }, [showJoinModal, selectedTournament, setTeamPlayers])
@@ -638,36 +637,38 @@ export default function Lobby() {
                                text-white outline-none focus:border-red-500 text-sm"
                         />
 
-                        {/* SCREENSHOT */}
-                        <div className="space-y-2">
-                          <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block ml-1">
-                            Payment Screenshot
-                          </label>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={e => {
-                              const file = e.target.files[0]
-                              if (!file) return
-                              const newPlayers = [...teamPlayers]
-                              newPlayers[i].screenshot = file
-                              newPlayers[i].previewUrl = URL.createObjectURL(file)
-                              setTeamPlayers(newPlayers)
-                            }}
-                            className="w-full text-[10px] text-gray-400
+                        {/* SCREENSHOT — only for Player 1 (Captain) */}
+                        {i === 0 && (
+                          <div className="space-y-2">
+                            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block ml-1">
+                              Payment Screenshot
+                            </label>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={e => {
+                                const file = e.target.files[0]
+                                if (!file) return
+                                const newPlayers = [...teamPlayers]
+                                newPlayers[i].screenshot = file
+                                newPlayers[i].previewUrl = URL.createObjectURL(file)
+                                setTeamPlayers(newPlayers)
+                              }}
+                              className="w-full text-[10px] text-gray-400
                                  file:bg-white/10 file:text-white
                                  file:px-3 file:py-1
                                  file:rounded-md file:border-0
                                  cursor-pointer"
-                          />
-                          {p.previewUrl && (
-                            <img
-                              src={p.previewUrl}
-                              alt={`Preview ${i + 1}`}
-                              className="rounded-lg h-20 w-full object-cover border border-white/10 mt-2"
                             />
-                          )}
-                        </div>
+                            {p.previewUrl && (
+                              <img
+                                src={p.previewUrl}
+                                alt={`Preview ${i + 1}`}
+                                className="rounded-lg h-20 w-full object-cover border border-white/10 mt-2"
+                              />
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

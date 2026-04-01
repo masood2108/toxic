@@ -378,10 +378,11 @@ export default function useLobbyLogic() {
       return
     }
 
-    // Validate all players have IGN, UID and Screenshot
-    const isValid = teamPlayers.every(p => p.ign && p.bgmiUid && p.screenshot)
-    if (!isValid || !selectedTournamentId) {
-      setMessage("⚠️ Fill all details & upload all screenshots")
+    // Validate all players have IGN and UID; only Player 1 needs screenshot
+    const allHaveBasics = teamPlayers.every(p => p.ign && p.bgmiUid)
+    const captainHasScreenshot = teamPlayers[0]?.screenshot
+    if (!allHaveBasics || !captainHasScreenshot || !selectedTournamentId) {
+      setMessage("⚠️ Fill all details & upload payment screenshot")
       return
     }
 
@@ -397,14 +398,15 @@ export default function useLobbyLogic() {
       const user = auth.currentUser
       const uploadedPlayers = []
 
-      // Upload each screenshot
+      // Upload captain's screenshot only
+      const captainScreenshotUrl = await uploadToCloudinary(teamPlayers[0].screenshot)
+
       for (let i = 0; i < teamPlayers.length; i++) {
         const p = teamPlayers[i]
-        const url = await uploadToCloudinary(p.screenshot)
         uploadedPlayers.push({
           ign: p.ign,
           bgmiUid: p.bgmiUid,
-          screenshotUrl: url
+          screenshotUrl: i === 0 ? captainScreenshotUrl : ""
         })
       }
 
