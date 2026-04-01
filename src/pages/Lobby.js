@@ -35,7 +35,9 @@ export default function Lobby() {
     notifications,
     markNotificationAsRead,
     userStats,
-    userName
+    userName,
+    announcements,
+    getTimeLeft
   } = useLobbyLogic()
 
   const [showNotifModal, setShowNotifModal] = useState(false)
@@ -140,10 +142,27 @@ export default function Lobby() {
           {gameId.toUpperCase()} DASHBOARD
         </p>
 
+        {/* ================= NEWS MARQUEE ================= */}
+        {announcements.length > 0 && (
+          <div className="relative h-10 bg-red-600/10 border-y border-red-500/20 overflow-hidden flex items-center">
+            <div className="absolute left-0 top-0 bottom-0 px-3 bg-red-600 text-black text-[10px] font-black z-10 flex items-center uppercase tracking-widest">
+              LATEST NEWS
+            </div>
+            <motion.div
+              animate={{ x: [1000, -2000] }}
+              transition={{ repeat: Infinity, duration: 30, ease: "linear" }}
+              className="whitespace-nowrap text-xs font-bold text-white/80"
+            >
+              {announcements.map(a => `🔥 ${a.message} • `).join("")}
+            </motion.div>
+          </div>
+        )}
+
         {/* TABS */}
         <div className="tabs-scroll">
           {[
             { name: gameTabName, icon: "🎮" },
+            { name: "LIVE/CLOSED", icon: "🔴" },
             { name: "LEADERBOARD", icon: "🏆" },
             { name: "RULES", icon: "📜" },
             { name: "PROFILE", icon: "👤" }
@@ -352,104 +371,130 @@ export default function Lobby() {
                 const isSelected = selectedTournament?.id === t.id
                 const isJoined = alreadyJoined && isSelected
                 const isClosed = t.status !== "open"
+                const timeLeft = getTimeLeft(t.startTimeClient)
+                const mapImg =
+                  t.map?.toUpperCase().includes("ERANGEL") ? "https://imgs.search.brave.com/FxC6yJ3MP-Sl1sOQkkH1dsrYXZJOldMUuBnrp2XeTHA/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93MC5wZWFrcHguY29tL3dhbGxwYXBlci8xMi8zOTQvSEQtd2FsbHBhcGVyLWJhdHRsZWdyb3VuZHMtZXJhbmdlbC1tYXAtcHViZy5qcGc" :
+                    t.map?.toUpperCase().includes("MIRAMAR") ? "https://imgs.search.brave.com/wlBk5iUtfXZVLBdbJ8TPjgNi7bjWqEKRpJ4FlgTXHlM/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93YWxscGFwZXJhY2Nlc3MuY29tL2Z1bGwvOTI1MDMwMC5qcGc" :
+                      t.map?.toUpperCase().includes("SANHOK") ? "https://imgs.search.brave.com/oAJpuSfA0aNKFgec7DUEl51MgPLXqcwApxisvVZy4mk/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93YWxscGFwZXJjYXZlLmNvbS93cC93cDM3MDI2NzMuanBn" :
+                        t.map?.toUpperCase().includes("VIKENDI") ? "https://imgs.search.brave.com/FjmMtihEEhqomoDasFOLkRBQmwWPXYKt1tYu-3ywykY/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93YWxscGFwZXJjYXZlLmNvbS93cC93cDM4NzE3NDguanBn" :
+                          t.map?.toUpperCase().includes("LIVIK") ? "https://imgs.search.brave.com/N7ygKDVyjLjTUmXZpZrhfmcAsZQ8yL2GYDSOHB4eqic/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93YWxscGFwZXJhY2Nlc3MuY29tL2Z1bGwvOTM3NTE5NS5qcGc" :
+                            "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=800"
 
                 return (
                   <motion.div
                     key={t.id}
                     whileHover={{ scale: 1.01 }}
-                    className={`relative overflow-hidden border rounded-3xl p-6 mb-6 transition-all group ${t.map?.toUpperCase().includes("ERANGEL") ? "bg-gradient-to-br from-black to-emerald-900/20 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]" :
-                      t.map?.toUpperCase().includes("MIRAMAR") ? "bg-gradient-to-br from-black to-amber-900/20 border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.05)]" :
-                        t.map?.toUpperCase().includes("SANHOK") ? "bg-gradient-to-br from-black to-green-900/20 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.05)]" :
-                          t.map?.toUpperCase().includes("VIKENDI") ? "bg-gradient-to-br from-black to-blue-900/20 border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.05)]" :
-                            "bg-black/40 border-white/10"
-                      }`}
+                    className="relative overflow-hidden border rounded-3xl p-6 mb-6 transition-all group"
                   >
-                    {/* STATUS BADGE */}
-                    <div className="absolute top-4 right-4">
-                      {isClosed ? (
-                        <span className="bg-gray-800 text-gray-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">CLOSED</span>
-                      ) : progress >= 90 ? (
-                        <span className="bg-red-500 text-black px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">FILLING FAST!</span>
-                      ) : (
-                        <span className="bg-green-500/20 text-green-500 border border-green-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">OPEN</span>
-                      )}
+                    {/* MAP BACKGROUND IMAGE */}
+                    <div className="absolute inset-0 z-0">
+                      <img
+                        src={mapImg}
+                        alt="map"
+                        className="w-full h-full object-cover opacity-20 grayscale group-hover:grayscale-0 group-hover:scale-110 group-hover:opacity-30 transition-all duration-700"
+                      />
+                      <div className={`absolute inset-0 bg-gradient-to-br from-black via-black/80 to-transparent ${t.map?.toUpperCase().includes("ERANGEL") ? "to-emerald-900/50" :
+                        t.map?.toUpperCase().includes("MIRAMAR") ? "to-amber-900/50" :
+                          "to-red-900/50"
+                        }`} />
                     </div>
 
-                    <h3 className="font-heading text-xl tracking-wide group-hover:text-red-500 transition-colors">
-                      {t.map} • {t.gameMode || t.type}
-                    </h3>
-
-                    <div className="flex gap-6 mt-2">
-                      <p className="text-xs text-gray-400 flex flex-col">
-                        <span className="text-[9px] uppercase font-black text-gray-600">Entry Fee</span>
-                        <span className="text-white font-bold">₹{t.entryFee}</span>
-                      </p>
-                      <p className="text-xs text-gray-400 flex flex-col">
-                        <span className="text-[9px] uppercase font-black text-gray-600">Prize Pool</span>
-                        <span className="text-green-400 font-bold">₹{t.prize}</span>
-                      </p>
-                    </div>
-
-                    {/* PROGRESS BAR */}
-                    <div className="mt-6 space-y-2">
-                      <div className="flex justify-between items-end">
-                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest flex items-center gap-2">
-                          SLOTS: <span className="text-white">{t.joinedCount} / {t.maxPlayers}</span>
-                        </p>
-                        <p className="text-[10px] text-gray-400 font-bold">{progress}% FULL</p>
+                    <div className="relative z-10">
+                      {/* STATUS BADGE */}
+                      <div className="absolute top-4 right-4">
+                        {isClosed ? (
+                          <span className="bg-gray-800 text-gray-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">CLOSED</span>
+                        ) : progress >= 90 ? (
+                          <span className="bg-red-500 text-black px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">FILLING FAST!</span>
+                        ) : (
+                          <span className="bg-green-500/20 text-green-500 border border-green-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">OPEN</span>
+                        )}
                       </div>
-                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-heading text-xl tracking-wide group-hover:text-red-500 transition-colors">
+                          {t.map} • {t.gameMode || t.type}
+                        </h3>
+                        {!isClosed && timeLeft && (
+                          <div className="text-right">
+                            <p className="text-[9px] uppercase font-black text-gray-500 tracking-widest">Starts In</p>
+                            <p className="text-sm font-black text-white">{timeLeft}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-6 mt-2">
+                        <p className="text-xs text-gray-400 flex flex-col">
+                          <span className="text-[9px] uppercase font-black text-gray-600">Entry Fee</span>
+                          <span className="text-white font-bold">₹{t.entryFee}</span>
+                        </p>
+                        <p className="text-xs text-gray-400 flex flex-col">
+                          <span className="text-[9px] uppercase font-black text-gray-600">Prize Pool</span>
+                          <span className="text-green-400 font-bold">₹{t.prize}</span>
+                        </p>
+                      </div>
+
+                      {/* PROGRESS BAR */}
+                      <div className="mt-6 space-y-2">
+                        <div className="flex justify-between items-end">
+                          <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest flex items-center gap-2">
+                            SLOTS: <span className="text-white">{t.joinedCount} / {t.maxPlayers}</span>
+                          </p>
+                          <p className="text-[10px] text-gray-400 font-bold">{progress}% FULL</p>
+                        </div>
+                        <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progress}%` }}
+                            className={`h-full transition-all duration-1000 ${progress >= 90 ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-red-600'}`}
+                          />
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-gray-400 mt-1">
+                        Match Status:{" "}
+                        <span className="text-white">
+                          {t.status?.toUpperCase()}
+                        </span>
+                      </p>
+
+                      {userStatus && isSelected && (
+                        <p className="text-xs text-yellow-400 mt-2">
+                          Your Status: {userStatus.toUpperCase()}
+                        </p>
+                      )}
+
+                      <div className="h-2 bg-gray-800 rounded mt-3">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${progress}%` }}
-                          className={`h-full transition-all duration-1000 ${progress >= 90 ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-red-600'}`}
+                          className="h-full bg-red-500"
                         />
                       </div>
-                    </div>
 
-                    <p className="text-xs text-gray-400 mt-1">
-                      Match Status:{" "}
-                      <span className="text-white">
-                        {t.status?.toUpperCase()}
-                      </span>
-                    </p>
+                      <button
+                        onClick={() => {
+                          setSelectedTournament(t)
+                          setSelectedTournamentId(t.id)
+                          setShowJoinModal(true)
+                        }}
 
-                    {userStatus && isSelected && (
-                      <p className="text-xs text-yellow-400 mt-2">
-                        Your Status: {userStatus.toUpperCase()}
-                      </p>
-                    )}
-
-                    <div className="h-2 bg-gray-800 rounded mt-3">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progress}%` }}
-                        className="h-full bg-red-500"
-                      />
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setSelectedTournament(t)
-                        setSelectedTournamentId(t.id)
-                        setShowJoinModal(true)
-                      }}
-
-                      disabled={isJoined || isClosed}
-                      className={`mt-4 px-6 py-2 rounded-lg
+                        disabled={isJoined || isClosed}
+                        className={`mt-4 px-6 py-2 rounded-lg
                         ${isJoined
-                          ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+                            ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+                            : isClosed
+                              ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+                              : "bg-red-500 text-black"
+                          }`}
+                      >
+                        {isJoined
+                          ? "JOINED"
                           : isClosed
-                            ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                            : "bg-red-500 text-black"
-                        }`}
-                    >
-                      {isJoined
-                        ? "JOINED"
-                        : isClosed
-                          ? "ENTRY CLOSED"
-                          : "JOIN"}
-                    </button>
+                            ? "ENTRY CLOSED"
+                            : "JOIN"}
+                      </button>
+                    </div>{/* end relative z-10 */}
                   </motion.div>
                 )
               })}

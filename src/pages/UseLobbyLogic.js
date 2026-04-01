@@ -48,6 +48,7 @@ export default function useLobbyLogic() {
   const [roomId, setRoomId] = useState("")
   const [roomPassword, setRoomPassword] = useState("")
   const [userName, setUserName] = useState("")
+  const [announcements, setAnnouncements] = useState([])
   const prevRoomId = useRef("")
 
   /* ================= REQUEST PERMISSION FOR NOTIFICATIONS ================= */
@@ -55,6 +56,15 @@ export default function useLobbyLogic() {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission()
     }
+  }, [])
+
+  /* ================= FETCH ANNOUNCEMENTS ================= */
+  useEffect(() => {
+    const q = query(collection(db, "announcements"), orderBy("timestamp", "desc"))
+    const unsub = onSnapshot(q, snap => {
+      setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    })
+    return () => unsub()
   }, [])
 
   /* ================= FETCH USER NAME ================= */
@@ -481,6 +491,23 @@ export default function useLobbyLogic() {
     notifications,
     markNotificationAsRead,
     userStats,
-    userName
+    userName,
+    announcements,
+    getTimeLeft: (startTime) => {
+      if (!startTime) return null
+      let dateObj;
+      if (startTime.seconds) dateObj = new Date(startTime.seconds * 1000)
+      else if (typeof startTime === 'string') dateObj = new Date(startTime)
+      else dateObj = new Date(startTime)
+
+      const diff = dateObj.getTime() - Date.now()
+      if (diff <= 0) return "Started"
+
+      const hours = Math.floor(diff / (1000 * 60 * 60))
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+      if (hours > 0) return `${hours}h ${mins}m`
+      return `${mins}m`
+    }
   }
 }
