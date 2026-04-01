@@ -641,7 +641,7 @@ export default function Lobby() {
                         {/* SCREENSHOT */}
                         <div className="space-y-2">
                           <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block ml-1">
-                            Screenshot (Profile/Payment)
+                            Payment Screenshot
                           </label>
                           <input
                             type="file"
