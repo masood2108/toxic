@@ -380,11 +380,19 @@ export default function useLobbyLogic() {
 
     // Validate all players have IGN and UID; only Player 1 needs screenshot
     const allHaveBasics = teamPlayers.every(p => p.ign && p.bgmiUid)
-    const captainHasScreenshot = teamPlayers[0]?.screenshot
-    if (!allHaveBasics || !captainHasScreenshot || !selectedTournamentId) {
-      setMessage("⚠️ Fill all details & upload payment screenshot")
-      return
-    }
+    const isPaid = selectedTournament?.entryFee > 0
+
+const captainHasScreenshot = teamPlayers[0]?.screenshot
+
+if (!allHaveBasics || !selectedTournamentId) {
+  setMessage("⚠️ Fill all details")
+  return
+}
+
+if (isPaid && !captainHasScreenshot) {
+  setMessage("⚠️ Upload payment screenshot")
+  return
+}
 
     // Validate team name for DUO/SQUAD
     if (teamPlayers.length > 1 && !teamName.trim()) {
@@ -405,8 +413,11 @@ export default function useLobbyLogic() {
       const uploadedPlayers = []
 
       // Upload captain's screenshot only
-      const captainScreenshotUrl = await uploadToCloudinary(teamPlayers[0].screenshot)
+let captainScreenshotUrl = ""
 
+if (selectedTournament?.entryFee > 0) {
+  captainScreenshotUrl = await uploadToCloudinary(teamPlayers[0].screenshot)
+}
       for (let i = 0; i < teamPlayers.length; i++) {
         const p = teamPlayers[i]
         uploadedPlayers.push({
