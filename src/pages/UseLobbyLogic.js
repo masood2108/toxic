@@ -440,9 +440,9 @@ if (selectedTournament?.entryFee > 0) {
         const currentJoined = data.joinedCount || 0
         const maxSlots = data.maxPlayers || 0
 
-        if (currentJoined + uploadedPlayers.length > maxSlots) {
-  throw new Error("MATCH_FULL")
-}
+        if (currentJoined + 1 > maxSlots) {
+          throw new Error("MATCH_FULL")
+        }
 
         // Add team and increment count together
         transaction.set(playerRef, {
@@ -463,10 +463,10 @@ if (selectedTournament?.entryFee > 0) {
 
         const currentTeams = data.teamCount || 0
 
-transaction.update(tournamentRef, {
-  joinedCount: currentJoined + uploadedPlayers.length, // players
-  teamCount: currentTeams + 1 // teams
-})
+        transaction.update(tournamentRef, {
+          joinedCount: currentJoined + 1, // now counts as 1 slot/team
+          teamCount: currentTeams + 1 // redundant but safe to keep
+        })
       })
 
       setShowJoinModal(false)
